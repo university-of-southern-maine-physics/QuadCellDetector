@@ -211,10 +211,16 @@ def signal_over_time(n, d0, δ, ϵ, tmax, σ, track, n_samples, amplitude):
     This routine executes the compute_signals function multiple times over
     a user specifiedtime interval and returns the path and the expected
     signals.
+    Notes:
+    1. the track function specifies the y-coordinate of the spot
+    center as it tracks across the detector.
+    2. The period of the motion is set to mimic our pendulum with
+    its current torsion fiber (40 seconds)
+
     """
     period = 40.00  # approx. period of our calibration ring pendulum
     tp = np.linspace(0, tmax, n_samples)     # create time array
-    xp = amplitude*np.sin(2*np.pi*tp/period)  # create x coordinate array
+    xp = amplitude*np.sin(2*np.pi*tp/period) # create x coordinate array
     yp = track(tp, d0)
 
     x, y, area = create_detector(n, d0, δ, ϵ)  # create detector array
@@ -239,15 +245,14 @@ def welch_psd(V, dt):
     return f, psd
 
 
-def periodogram_psd(v, dt):
-    sample_freq = 1/dt
-    f, psd = signal.periodogram(v, sample_freq,
+def periodogram_psd(v, fs):
+    f, psd = signal.periodogram(v, fs,
                                 detrend="constant", scaling='spectrum')
     return f, psd
 
 
-def SIN_PATH(x, d0):
-    return 0.5*d0*np.sin(2*np.pi*x/0.5)
+def SIN_PATH(t, d0):
+    return 0.5*d0*np.sin(2*np.pi*t/2.0)
 
 
 def CENTER_PATH(x, d0):
@@ -265,6 +270,7 @@ def power_spectrum(n, d0, δ, ϵ, tmax, σ, track_func, n_samples, amplitude):
     """
     This code uses the functions in physics.py to build a detector and
     simulate the motion of our laser on some path across the detector.
+
     """
     import time
 #   Physical Paramaters for our detector system:
@@ -277,7 +283,7 @@ def power_spectrum(n, d0, δ, ϵ, tmax, σ, track_func, n_samples, amplitude):
 #
 #    n           # choose a reasonable minimum n value
 #    ϵ           # fudge factor due to roundoff error in case where δ = 2Δ
-    Δ = d0/n    # grid size for simulation
+    Δ = d0/n     # grid size for simulation
 #    tmax        # maximum time to run for
 #    n_samples   # number of samples for path in time
 #    track_func  # path of laser across detector
@@ -289,34 +295,36 @@ def power_spectrum(n, d0, δ, ϵ, tmax, σ, track_func, n_samples, amplitude):
 #   beam centered at (xc, yc) illumninating the detector.
 
     start_time = time.time()
-    tp, xp, s, lr, tb = signal_over_time(n, d0, δ, ϵ, tmax, σ,
+    tp, xp, s, lr, tb = signal_over_time(n, d0, δ, ϵ, tmax, σ,\
                                         track_func, n_samples, amplitude)
-    f, psd = periodogram_psd(lr, tmax/n_samples)
+    f_lr, psd_lr = periodogram_psd(lr, n_samples/tmax)
+    f_tb, psd_tb = periodogram_psd(tb, n_samples/tmax)
     print("Runtime = %s seconds ---" % round(time.time() - start_time, 2))
-    return tp, xp, s, lr, tb, f, psd
-    
-def plot_power_spectrum(tp, xp, s, lr, tb, f, psd):
+    return tp, xp, s, lr, tb, f_lr, psd_lr, f_tb, psd_tb
+#
+def plot_power_spectrum(tp, xp, s, lr, tb, f, psd, σ = 0.32, fmax=0.25, p_label='Left-Right'):
+    """
+	This routine plots the (already computed)
+	detector signal and it's power spectrum.
+	"""
     import matplotlib.pyplot as plt
-    σ = 0.32
-    plt.rcParams["figure.figsize"] = [16, 9]	
+    plt.rcParams["figure.figsize"] = [16, 9]
     plt.subplot(121)
-    plt.plot(tp, lr, '-g', label='left-right')
+    plt.plot(tp, lr, '-g', label = p_label )
     plt.ylabel(r'Detector Signals', fontsize=16, color='b')
     plt.xlabel(r'time (sec)', fontsize=16, color='b')
     plt.legend(fontsize=12, loc=(1.05, 0.875))
-    plt.title(r'\textbf{Left - Right Signals: laser diameter = %.3f}' % (σ),
+    plt.title(r'\textbf{Signals: laser diameter = %.3f}' % (σ),
               fontsize=12)
     tmax = tp[-1]
     plt.xlim(0, tmax)
-    #np.savetxt('L-R.txt', list(zip(tp, lr)), fmt='%.4f')
-    #np.savetxt('psd.txt', list(zip(f, np.sqrt(psd))), fmt='%.4f')
     plt.subplot(122)
     plt.plot(f, np.sqrt(psd))
     plt.ylabel(r'Power Spectrum', fontsize=16)
     plt.xlabel(r'frequency (Hz)', fontsize=16)
     plt.grid()
-    plt.xlim(0, 0.2)
-    
+    plt.xlim(0, fmax)
+
     plt.subplots_adjust(left=0.2, wspace=0.8, top=0.8)
     plt.show()
-    return 
+    return None
