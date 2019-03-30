@@ -185,7 +185,7 @@ def compute_signals(n, d0, δ, beam, plot_signal=False):
 
 
 @jit
-def signal_over_path(n, d0, δ, xmax, σ, track, n_samples,  ϵ = 1e-14):
+def signal_over_path(n, d0, δ, xmax, σ, track, n_samples, ϵ=1e-14):
     """
     This routine executes the compute_signals function multiple times over
     a user specified path function and returns the path and the expected
@@ -199,7 +199,8 @@ def signal_over_path(n, d0, δ, xmax, σ, track, n_samples,  ϵ = 1e-14):
                  : x from -xmax to +xmax
     σ            : width of gaussian beam
     track        : name of function describing path across detector
-    n_samples     : number of samples in domain; dx = 2*xmax/n_samples
+    n_samples    : number of samples in domain; dx = 2*xmax/n_samples
+    ϵ            : fudge factor needed for roundoff error (default = 1e-14)
 
     RETURNS:
     xp         : list of x coordinates for path
@@ -222,17 +223,36 @@ def signal_over_path(n, d0, δ, xmax, σ, track, n_samples,  ϵ = 1e-14):
 
 
 @jit
-def signal_over_time(n, d0, δ, ϵ, tmax, σ, track, n_samples, amplitude):
+def signal_over_time(n, d0, δ, tmax, σ, track, n_samples, amplitude, ϵ=1e-14):
     """
     This routine executes the compute_signals function multiple times over
-    a user specifiedtime interval and returns the path and the expected
-    signals.
+    a user specified TIME interval and returns the path and the expected
+    signals. 
+    This routine is more relevant to someone using a quadrant cell
+    detector as a way top measure zero crossings of torsional pendulum undergoing
+    angular oscillations with amplitude significantly greater that the effective
+    angular amplitude defined by the detector. That being said, this function allows
+    the users to specify the amplitude to any value desired. 
     Notes:
     1. the track function specifies the y-coordinate of the spot
     center as it tracks across the detector.
     2. The period of the motion is set to mimic our pendulum with
     its current torsion fiber (40 seconds)
+    INPUTS:
+    n            : number of cells to divide diameter up into
+    d0           : diameter of detector in mm
+    δ            : gap width between quadrants of detector in mm
+    tmax         : maximum time for simulation in seconds
+    σ            : width of gaussian beam in mm
+    track        : name of function describing path across detector
+    n_samples    : number of samples in time domain; dt = 2*tmax/n_samples
 
+    RETURNS:
+    tp         : lits of time values in seconds
+    xp         : list of x coordinates for path
+    sum_signal : sum of all 4 quadrants
+    l_r        : left minus right quadrants
+    t_b        : top minus bottom quadrants
     """
     period = 40.00  # approx. period of our calibration ring pendulum
     tp = np.linspace(0, tmax, n_samples)     # create time array
@@ -282,7 +302,7 @@ def HALF_PATH(x, d0):
 def QUARTER_PATH(x, d0):
     return d0/8
 
-def power_spectrum(n, d0, δ, ϵ, tmax, σ, track_func, n_samples, amplitude):
+def power_spectrum(n, d0, δ, tmax, σ, track_func, n_samples, amplitude):
     """
     This code uses the functions in physics.py to build a detector and
     simulate the motion of our laser on some path across the detector.
@@ -311,7 +331,7 @@ def power_spectrum(n, d0, δ, ϵ, tmax, σ, track_func, n_samples, amplitude):
 #   beam centered at (xc, yc) illumninating the detector.
 
     start_time = time.time()
-    tp, xp, s, lr, tb = signal_over_time(n, d0, δ, ϵ, tmax, σ,\
+    tp, xp, s, lr, tb = signal_over_time(n, d0, δ, tmax, σ,\
                                         track_func, n_samples, amplitude)
     f_lr, psd_lr = periodogram_psd(lr, n_samples/tmax)
     f_tb, psd_tb = periodogram_psd(tb, n_samples/tmax)
