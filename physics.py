@@ -190,6 +190,22 @@ def signal_over_path(n, d0, δ, xmax, σ, track, n_samples,  ϵ = 1e-14):
     This routine executes the compute_signals function multiple times over
     a user specified path function and returns the path and the expected
     signals.
+
+    INPUTS:
+    n            : number of cells to divide diameter up into
+    d0           : diameter of detector in mm
+    δ            : gap width between quadrants of detector in mm
+    xmax         : horizontal domain for sweeping across detector
+                 : x from -xmax to +xmax
+    σ            : width of gaussian beam
+    track        : name of function describing path across detector
+    n_samples     : number of samples in domain; dx = 2*xmax/n_samples
+
+    RETURNS:
+    xp         : list of x coordinates for path
+    sum_signal : sum of all 4 quadrants
+    l_r        : left minus right quadrants
+    t_b        : top minus bottom quadrants
     """
     xp = np.linspace(-xmax, xmax, n_samples)   # create x coordinate array
     x, y, area = create_detector(n, d0, δ, ϵ)  # create detector array
@@ -302,7 +318,8 @@ def power_spectrum(n, d0, δ, ϵ, tmax, σ, track_func, n_samples, amplitude):
     print("Runtime = %s seconds ---" % round(time.time() - start_time, 2))
     return tp, xp, s, lr, tb, f_lr, psd_lr, f_tb, psd_tb
 #
-def plot_power_spectrum(tp, xp, s, lr, tb, f, psd, σ = 0.32, fmax=0.25, p_label='Left-Right'):
+def plot_power_spectrum(tp, xp, s, lr, tb, f, psd, σ = 0.32, fmax=0.25,
+                        p_label='Left-Right'):
     """
 	This routine plots the (already computed)
 	detector signal and it's power spectrum.
