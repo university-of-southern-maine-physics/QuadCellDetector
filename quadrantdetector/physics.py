@@ -20,14 +20,20 @@ def laser(x, y, x_c, y_c, σ):
     compute_signals function to eliminate the beam outside the detector
     and also to account for the dead zones due to the gap.
 
-    INPUTS:
-    X, Y     :  N by N position arrays containing the detector grid points
-    x_c, y_c :  x and y coordinates of the center of the laser spot
-                (not necessarily on the detector!)
-    σ        :  the standard deviation for the gaussian beam; FWHM ~ 2.355σ
+    Parameters
+    ----------
+    x, y : array_like
+        N by N numpy position arrays containing the detector grid points
+    x_c, y_c : float
+        x and y coordinates of the center of the laser spot
+        (not necessarily on the detector!)
+    σ : float
+        the standard deviation for the gaussian beam; FWHM ~ 2.355σ
 
-    RETURNS:
-    Array of normalized beam intensity values over the detector array
+    Returns
+    -------
+    σ : array_like
+        NumPy array of normalized beam intensity values over the detector array
     """
 
     beam = 1/(2*np.pi*σ**2)*np.exp(-((x-x_c)**2 + (y-y_c)**2)/(2*σ**2))
