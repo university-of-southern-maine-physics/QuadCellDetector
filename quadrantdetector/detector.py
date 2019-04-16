@@ -12,7 +12,7 @@ from scipy.signal import welch
 import scipy.signal as signal
 
 
-def laser(x, y, x_c, y_c, σ):
+def laser(grid, grid_density, x_c, y_c, σ):
     """
     This cute function uses the wondrousness of NumPy to produce a gaussian
     beam in one line of code. The resulting array will be masked in the
@@ -21,10 +21,15 @@ def laser(x, y, x_c, y_c, σ):
 
     Parameters
     ----------
-    x, y : array_like
+    grid : array_like
         N by N numpy position arrays containing the detector grid points
+    grid_density : float
+        Value that describes how dense this representation of the grid is.
+        Is equal to the diameter of the detector divided by the number of
+        points along a given axis; this is the same as d0 / n for
+        create_detector.
     x_c, y_c : float
-        x and y coordinates of the center of the laser spot
+        x and y Cartesian coordinates of the center of the laser spot
         (not necessarily on the detector!)
     σ : float
         the standard deviation for the gaussian beam; FWHM ~ 2.355σ
@@ -34,8 +39,15 @@ def laser(x, y, x_c, y_c, σ):
     array_like
         NumPy array of normalized beam intensity values over the detector array
     """
+    grid_density = grid_density if 0 < grid_density else 1 / grid_density
+    x_shape = (grid.shape[0] / 2) * grid_density
+    y_shape = (grid.shape[1] / 2) * grid_density
+    offset = grid_density / 2
+    y, x = np.ogrid[-x_shape + offset:x_shape:grid_density,
+                    -y_shape + offset:y_shape:grid_density]
     return 1/(2 * np.pi * σ**2) \
         * np.exp(-((x - x_c)**2 + (y - y_c)**2) / (2 * σ**2))
+
 
 
 def n_critical(d0, δ):
@@ -83,8 +95,6 @@ def create_detector(n, d0, δ, ϵ=1e-14):
 
     Returns
     -------
-    x, y : array_like
-        2d arrays of x and y coordinates
     active_area : array_like
         2d array with effective area of each active cell
 
@@ -152,22 +162,16 @@ def create_detector(n, d0, δ, ϵ=1e-14):
     partial_mask[partial_mask == 0] = 1
     active_area = inside * gap_mask * partial_mask * Δ**2
 
-    return x, y, active_area
+    return active_area
 
 
-def compute_signals(n, d0, δ, beam, plot_signal=False):
+def compute_signals(beam, area, plot_signal=False):
     """
     This routine computes--for a given beam intensity--
     the sum, left-right, and top-bottom signals.
 
     Parameters
     ----------
-    n : int
-        Number of cells to divide diameter up into
-    d0 : float
-        Diameter of detector in mm
-    δ : float
-        Gap width between quadrants of detector in mm
     beam : array_like
         Array of laser beam intensity
     plot_signal : bool, optional
@@ -182,29 +186,13 @@ def compute_signals(n, d0, δ, beam, plot_signal=False):
     t_b : float
         Top minus bottom quadrants
     """
-    x, y, area = create_detector(n, d0, δ)
     signal = beam * area
-    sum_signal = np.sum(signal)
     x_shape, y_shape = signal.shape
     right = np.sum(signal[0:x_shape, int(y_shape/2):y_shape])
     left = np.sum(signal[0:x_shape, 0:int(y_shape/2)])
     bottom = np.sum(signal[0:int(x_shape/2), 0:y_shape])
     top = np.sum(signal[int(x_shape/2):x_shape, 0:y_shape])
-    l_r = left - right
-    t_b = top - bottom
-
-    if plot_signal:
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(8, 8))
-        plt.imshow(signal, origin='lower',
-                   extent=[-d0/2, +d0/2, -d0/2, d0/2], cmap=plt.cm.Reds)
-        plt.xlabel('y axis (mm)', fontsize=18)
-        plt.ylabel('x axis (mm)', fontsize=18)
-        plt.grid(linestyle='-', linewidth=0.25)
-        plt.tick_params(axis='both', which='major', labelsize=18)
-        plt.show()
-
-    return sum_signal, l_r, t_b
+    return np.sum(signal), left - right, top - bottom
 
 
 def signal_over_path(n, d0, δ, xmax, σ, track, n_samples, ϵ=1e-14):
@@ -244,17 +232,9 @@ def signal_over_path(n, d0, δ, xmax, σ, track, n_samples, ϵ=1e-14):
         List of the top minus bottom quadrants
     """
     xp = np.linspace(-xmax, xmax, n_samples)   # create x coordinate array
-    x, y, area = create_detector(n, d0, δ, ϵ)  # create detector array
-    sum_sig = []
-    l_r = []
-    t_b = []
-    for x_val in np.nditer(xp):
-        beam = laser(x, y, x_val, track(x_val, d0), σ)
-        s, l, t = compute_signals(n, d0, δ, beam, plot_signal=False)
-        sum_sig.append(s)
-        l_r.append(l)
-        t_b.append(t)
-    return xp, sum_sig, l_r, t_b
+    area = create_detector(n, d0, δ, ϵ)  # create detector array
+    all_results = [compute_signals(laser(area, d0/n, x_val, 0, σ), area) for x_val in np.nditer(xp)]
+    return (xp, *zip(*all_results))
 
 
 def signal_over_time(n, d0, δ, tmax, σ, track, n_samples, amplitude, ϵ=1e-14):
