@@ -21,6 +21,20 @@ matrix:
       language: python
       python: 3.5
 
+before_install:
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      pip install -U pip;
+      pip install --egg --no-binary pyenv pyenv;
+      export PATH=~/.pyenv/bin:$PATH;
+      eval "$(pyenv init -)";
+      pyenv install --skip-existing $PYTHON_VERSION;
+      pyenv global $PYTHON_VERSION;
+      pyenv shell $PYTHON_VERSION;
+      pip install -U pip setuptools wheel py;
+    fi
+    pip install pytest
+  
 # command to install dependencies
 install:
   - pip install .
