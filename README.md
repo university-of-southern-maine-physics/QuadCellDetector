@@ -11,5 +11,3 @@ The package simulates circular quadrant cell detectors, where the quadrant cell 
 To see a complete demonstration of the library features, see the [DetectorDemo][0] Jupyter notebook.
 
 [0]: https://github.com/university-of-southern-maine-physics/QuadCellDetector/blob/master/demos/DetectorDemo.ipynb
-
-
