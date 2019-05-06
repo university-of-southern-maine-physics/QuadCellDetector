@@ -85,7 +85,7 @@ def create_detector(n, d0, δ, ϵ=1e-14):
     Parameters
     ----------
     n : int
-        Number of chucks to divide detector into
+        Number of chunks to divide detector into
     d0 : float
         Diameter of full detector (in mm)
     δ : float
@@ -292,48 +292,12 @@ def signal_over_time(n, d0, δ, tmax, σ, track, n_samples, amplitude, ϵ=1e-14)
     xp = amplitude*np.sin(2*np.pi*tp/period)  # create x coordinate array
     yp = track(tp, d0)
 
-    x, y, area = create_detector(n, d0, δ, ϵ)  # create detector array
-    sum_sig = []
-    l_r = []
-    t_b = []
+    area = create_detector(n, d0, δ, ϵ=ϵ)  # create detector array
 
-    for x_val, y_val in np.nditer([xp, yp]):
-        beam = laser(x, y, x_val, y_val, σ)
-        s, l, t = compute_signals(n, d0, δ, beam, plot_signal=False)
-        sum_sig.append(s)
-        l_r.append(l)
-        t_b.append(t)
+    all_sig = [compute_signals(laser(area, x_val, y_val, σ), area)
+               for x_val, y_val in np.nditer([xp, yp])]
 
-    return tp, xp, sum_sig, l_r, t_b
-
-
-def welch_psd(V, dt):
-    sample_freq = 1/dt
-    f, psd = welch(V, sample_freq, window='hanning', nperseg=256,
-                   detrend='constant')
-    return f, psd
-
-
-def periodogram_psd(v, fs):
-    f, psd = signal.periodogram(v, fs,
-                                detrend="constant", scaling='spectrum')
-    return f, psd
-
-
-def SIN_PATH(t, d0):
-    return 0.5*d0*np.sin(2*np.pi*t/2.0)
-
-
-def CENTER_PATH(x, d0):
-    return 0.0
-
-
-def HALF_PATH(x, d0):
-    return (d0/4)
-
-
-def QUARTER_PATH(x, d0):
-    return d0/8
+    return (tp, xp, *zip(*all_sig))
 
 
 def power_spectrum(n, d0, δ, tmax, σ, track_func, n_samples, amplitude):
@@ -368,33 +332,3 @@ def power_spectrum(n, d0, δ, tmax, σ, track_func, n_samples, amplitude):
     f_lr, psd_lr = periodogram_psd(lr, n_samples/tmax)
     f_tb, psd_tb = periodogram_psd(tb, n_samples/tmax)
     return tp, xp, s, lr, tb, f_lr, psd_lr, f_tb, psd_tb
-
-
-def plot_power_spectrum(tp, xp, s, lr, tb, f, psd, σ=0.32, fmax=0.25,
-                        p_label='Left-Right'):
-    """
-    This routine plots the (already computed) detector signal and it's power
-    spectrum.
-    """
-
-    import matplotlib.pyplot as plt
-    plt.rcParams["figure.figsize"] = [16, 9]
-    plt.subplot(121)
-    plt.plot(tp, lr, '-g', label=p_label)
-    plt.ylabel(r'Detector Signals', fontsize=16, color='b')
-    plt.xlabel(r'time (sec)', fontsize=16, color='b')
-    plt.legend(fontsize=12, loc=(1.05, 0.875))
-    plt.title(r'\textbf{Signals: laser diameter = %.3f}' % (σ),
-              fontsize=12)
-    tmax = tp[-1]
-    plt.xlim(0, tmax)
-    plt.subplot(122)
-    plt.plot(f, np.sqrt(psd))
-    plt.ylabel(r'Power Spectrum', fontsize=16)
-    plt.xlabel(r'frequency (Hz)', fontsize=16)
-    plt.grid()
-    plt.xlim(0, fmax)
-
-    plt.subplots_adjust(left=0.2, wspace=0.8, top=0.8)
-    plt.show()
-    return None
