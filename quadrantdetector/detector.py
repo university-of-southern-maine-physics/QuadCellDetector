@@ -8,8 +8,7 @@ and mask it according to the specifications of our quandrant cell photodiode.
 """
 import numpy as np
 import numpy.ma as ma
-from scipy.signal import welch
-import scipy.signal as signal
+from quadrantdetector.sample_functions import periodogram_psd
 
 
 def laser(grid, grid_density, x_c, y_c, σ):
@@ -47,7 +46,6 @@ def laser(grid, grid_density, x_c, y_c, σ):
                     -y_shape + offset:y_shape:grid_density]
     return 1/(2 * np.pi * σ**2) \
         * np.exp(-((x - x_c)**2 + (y - y_c)**2) / (2 * σ**2))
-
 
 
 def n_critical(d0, δ):
@@ -214,7 +212,8 @@ def signal_over_path(n, d0, δ, xmax, σ, track, n_samples, ϵ=1e-14):
     σ : float
         Width of gaussian beam
     track :
-        A function describing path across detector
+        A function describing path across detector. Must take the
+        arguments (x, d0).
     n_samples : int
         Number of samples in domain; dx = 2 * xmax / n_samples
     ϵ : float
@@ -233,7 +232,8 @@ def signal_over_path(n, d0, δ, xmax, σ, track, n_samples, ϵ=1e-14):
     """
     xp = np.linspace(-xmax, xmax, n_samples)   # create x coordinate array
     area = create_detector(n, d0, δ, ϵ)  # create detector array
-    all_results = [compute_signals(laser(area, d0/n, x_val, 0, σ), area) for x_val in np.nditer(xp)]
+    all_results = [compute_signals(laser(area, d0/n, x_val, 0, σ), area)
+                   for x_val in np.nditer(xp)]
     return (xp, *zip(*all_results))
 
 
@@ -263,7 +263,8 @@ def signal_over_time(n, d0, δ, tmax, σ, track, n_samples, amplitude, ϵ=1e-14)
     σ : float
         width of gaussian beam in mm
     track
-        name of function describing path across detector
+        name of function describing path across detector. Must take the
+        arguments (x, d0).
     n_samples : int
         number of samples in time domain; dt = 2*tmax/n_samples
 
