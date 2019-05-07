@@ -6,19 +6,27 @@ matrix:
       language: generic
       env: PYTHON_VERSION=3.5.1
     
-    - os: windows
-      language: sh
-      env: PATH=/c/Python35:/c/Python35/Scripts:$PATH
-      before_install:
-      - choco install python --version 3.5.4
-      - python -m pip install --upgrade pip
+    - os: osx
+      language: generic
+      env: PYTHON_VERSION=3.6.8
     
     - os: windows
       language: sh
-      env: PATH=/c/Python36:/c/Python36/Scripts:$PATH
-      before_install:
-      - choco install python --version 3.6.8
-      - python -m pip install --upgrade pip
+      env:
+        - PATH=/c/Python35:/c/Python35/Scripts:$PATH
+        - PYTHON_VERSION=3.4.9
+  
+    - os: windows
+      language: sh
+      env:
+        - PATH=/c/Python35:/c/Python35/Scripts:$PATH
+        - PYTHON_VERSION=3.5.1
+    
+    - os: windows
+      language: sh
+      env:
+        - PATH=/c/Python36:/c/Python36/Scripts:$PATH
+        - PYTHON_VERSION=3.6.8
 
     - os: linux
       dist: xenial
@@ -77,11 +85,16 @@ before_install:
       pyenv shell $PYTHON_VERSION;
       pip install -U pip setuptools wheel py;
     fi
-    pip install pytest
+    if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+      choco install python --version $PYTHON_VERSION
+      python -m pip install --upgrade pip
+    fi
   
 # command to install dependencies
 install:
-  - pip install .
+  -|
+    pip install pytest
+    pip install .
 
 # command to run tests
 script:
