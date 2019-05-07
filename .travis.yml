@@ -5,6 +5,20 @@ matrix:
     - os: osx
       language: generic
       env: PYTHON_VERSION=3.5.1
+    
+    - os: windows
+      language: sh
+      env: PATH=/c/Python35:/c/Python35/Scripts:$PATH
+      before_install:
+      - choco install python --version 3.5.4
+      - python -m pip install --upgrade pip
+    
+    - os: windows
+      language: sh
+      env: PATH=/c/Python36:/c/Python36/Scripts:$PATH
+      before_install:
+      - choco install python --version 3.6.8
+      - python -m pip install --upgrade pip
 
     - os: linux
       dist: xenial
@@ -30,11 +44,6 @@ matrix:
       dist: xenial
       language: python
       python: 3.3
-
-    - os: linux
-      dist: trusty
-      language: python
-      python: 3.7
 
     - os: linux
       dist: trusty
