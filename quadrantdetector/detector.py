@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jul 16 14:06:26 2018
 This code defines functions needed to create a gaussian laser beam
 and mask it according to the specifications of our quandrant cell photodiode.
-@author: paul nakroshis
+@author: Paul Nakroshis
 """
 import numpy as np
 import numpy.ma as ma
@@ -12,7 +11,7 @@ from scipy.signal import welch
 import scipy.signal as signal
 
 
-def laser(grid, grid_density, x_c, y_c, σ):
+def laser(grid, grid_density, x_c, y_c, sigma):
     """
     This cute function uses the wondrousness of NumPy to produce a gaussian
     beam in one line of code. The resulting array will be masked in the
@@ -31,7 +30,7 @@ def laser(grid, grid_density, x_c, y_c, σ):
     x_c, y_c : float
         x and y Cartesian coordinates of the center of the laser spot
         (not necessarily on the detector!)
-    σ : float
+    sigma : float
         the standard deviation for the gaussian beam; FWHM ~ 2.355σ
 
     Returns
@@ -44,13 +43,12 @@ def laser(grid, grid_density, x_c, y_c, σ):
     y_shape = (grid.shape[1] / 2) * grid_density
     offset = grid_density / 2
     y, x = np.ogrid[-x_shape + offset:x_shape:grid_density,
-                    -y_shape + offset:y_shape:grid_density]
-    return 1/(2 * np.pi * σ**2) \
-        * np.exp(-((x - x_c)**2 + (y - y_c)**2) / (2 * σ**2))
+           -y_shape + offset:y_shape:grid_density]
+    return 1 / (2 * np.pi * sigma ** 2) \
+           * np.exp(-((x - x_c) ** 2 + (y - y_c) ** 2) / (2 * sigma ** 2))
 
 
-
-def n_critical(d0, δ):
+def n_critical(detector_diameter, quadrant_gap):
     """
     This function computes the smallest even integer value for the number of
     cells, n_crit, is such that no more than 2 complete cells fall within the
@@ -59,10 +57,10 @@ def n_critical(d0, δ):
 
     Parameters
     ----------
-    d0 : float
-        The diameter of the quadrant cell photodiode (in mm)
-    δ : float
-        The gap distance between the quadrants of the photodiode (in mm)
+    detector_diameter : float
+        The diameter of the quadrant cell photo diode (in mm)
+    quadrant_gap : float
+        The gap distance between the quadrants of the photo diode (in mm)
 
     Returns
     -------
@@ -70,13 +68,13 @@ def n_critical(d0, δ):
         The critical number of cells (an even number)
 
     """
-    n_crit = int(2 * d0 / δ)
-    if n_crit % 2 != 0:
-        n_crit = n_crit + 1
-    return n_crit
+    critical = int(2 * detector_diameter / quadrant_gap)
+    if critical % 2 != 0:
+        critical += 1
+    return critical
 
 
-def create_detector(n, d0, δ, ϵ=1e-14):
+def create_detector(n, detector_diameter, quadrant_gap, roundoff_margin=1e-14):
     """
     This routine creates the entire detector array. It does so by assuming a
     square array and eliminating chunks not within the circular detector
@@ -86,12 +84,12 @@ def create_detector(n, d0, δ, ϵ=1e-14):
     ----------
     n : int
         Number of chucks to divide detector into
-    d0 : float
+    detector_diameter : float
         Diameter of full detector (in mm)
-    δ : float
+    quadrant_gap : float
         Gap width between the quadrants of the detector (in mm)
     ϵ : float
-        Fudge factor needed for roundoff error (default = 1e-14)
+        Fudge factor needed for round-off error (default = 1e-14)
 
     Returns
     -------
@@ -121,51 +119,53 @@ def create_detector(n, d0, δ, ϵ=1e-14):
     way of thinking, these points are to be neglected (masked); however,
     since the logical equivalent to TRUE is 1, a mutiplication of this mask
     with the x and y arrays will yield an array with the points outside the
-    detector eliminated. Techically, I am using my mask in the OPPOSITE manner
+    detector eliminated. Technically, I am using my mask in the OPPOSITE manner
     in which numpy intends.
     """
 
-    Δ = d0 / n
-    y, x = np.mgrid[-d0/2 + Δ/2:d0/2:Δ, -d0/2 + Δ/2:d0/2:Δ]
+    delta = detector_diameter / n
+    y, x = np.mgrid[-detector_diameter / 2 + delta / 2: detector_diameter / 2: delta,
+           -detector_diameter / 2 + delta / 2: detector_diameter / 2:delta]
     # This computes the distance of each grid point from the origin
     # and then we extract a masked array of points where r_sqr is less
     # than the distance of each grid point from the origin:
-    r_sqr = x**2 + y**2
-    inside = ma.getmask(ma.masked_where(r_sqr <= (d0/2)**2, x))
+    r_sqr = x ** 2 + y ** 2
+    inside = ma.getmask(ma.masked_where(r_sqr <= (detector_diameter / 2) ** 2, x))
 
     # This portion takes care of masking out elements of the detector where
     # the gap exists. It returns an array of light intensity over the detector.
 
-    all_dead = (np.abs(x) + Δ/2 - ϵ > δ/2) & (np.abs(y) + Δ/2 - ϵ > δ/2)
+    all_dead = (np.abs(x) + delta / 2 - roundoff_margin > quadrant_gap / 2) \
+               & (np.abs(y) + delta / 2 - roundoff_margin > quadrant_gap / 2)
 
-    partial_dead_x_only = (np.abs(x) + Δ/2 - ϵ > δ/2) & \
-                          (np.abs(x) - Δ/2 - ϵ < δ/2) & \
-                          (np.abs(y) - Δ/2 - ϵ > δ/2)
-    partial_dead_y_only = (np.abs(y) + Δ/2 - ϵ > δ/2) & \
-                          (np.abs(y) - Δ/2 - ϵ < δ/2) & \
-                          (np.abs(x) - Δ/2 - ϵ > δ/2)
-    partial_dead_x_or_y = (1/Δ)*(np.abs(x) + Δ/2 - δ/2)*partial_dead_x_only +\
-                          (1/Δ)*(np.abs(y) + Δ/2 - δ/2)*partial_dead_y_only
+    partial_dead_x_only = (np.abs(x) + delta / 2 - roundoff_margin > quadrant_gap / 2) & \
+                          (np.abs(x) - delta / 2 - roundoff_margin < quadrant_gap / 2) & \
+                          (np.abs(y) - delta / 2 - roundoff_margin > quadrant_gap / 2)
+    partial_dead_y_only = (np.abs(y) + delta / 2 - roundoff_margin > quadrant_gap / 2) & \
+                          (np.abs(y) - delta / 2 - roundoff_margin < quadrant_gap / 2) & \
+                          (np.abs(x) - delta / 2 - roundoff_margin > quadrant_gap / 2)
+    partial_dead_x_or_y = (1 / delta) * (np.abs(x) + delta / 2 - quadrant_gap / 2) * partial_dead_x_only + \
+                          (1 / delta) * (np.abs(y) + delta / 2 - quadrant_gap / 2) * partial_dead_y_only
 
-    partial_dead_x_and_y = (1/Δ**2) * (np.abs(x) + Δ/2 - δ/2)**2 * \
-        (
-            (np.abs(x) + Δ/2 - ϵ > δ/2) &
-            (np.abs(x) - Δ/2 - ϵ < δ/2) &
-            (np.abs(y) + Δ/2 - ϵ > δ/2) &
-            (np.abs(y) + Δ/2 - ϵ > δ/2) &
-            (np.abs(y) - Δ/2 - ϵ < δ/2) &
-            (np.abs(x) + Δ/2 - ϵ > δ/2)
-        )
+    partial_dead_x_and_y = (1 / delta ** 2) * (np.abs(x) + delta / 2 - quadrant_gap / 2) ** 2 * \
+                           (
+                                   (np.abs(x) + delta / 2 - roundoff_margin > quadrant_gap / 2) &
+                                   (np.abs(x) - delta / 2 - roundoff_margin < quadrant_gap / 2) &
+                                   (np.abs(y) + delta / 2 - roundoff_margin > quadrant_gap / 2) &
+                                   (np.abs(y) + delta / 2 - roundoff_margin > quadrant_gap / 2) &
+                                   (np.abs(y) - delta / 2 - roundoff_margin < quadrant_gap / 2) &
+                                   (np.abs(x) + delta / 2 - roundoff_margin > quadrant_gap / 2)
+                           )
 
-    gap_mask = all_dead      # not stricly needed, but
+    gap_mask = all_dead  # not strictly needed, but
     partial_mask = partial_dead_x_or_y + partial_dead_x_and_y
     partial_mask[partial_mask == 0] = 1
-    active_area = inside * gap_mask * partial_mask * Δ**2
+    active_area = inside * gap_mask * partial_mask * delta ** 2
 
     return active_area
 
 
-def compute_signals(beam, area, plot_signal=False):
+def compute_signals(beam, area):
     """
     This routine computes--for a given beam intensity--
     the sum, left-right, and top-bottom signals.
@@ -174,8 +174,8 @@ def compute_signals(beam, area, plot_signal=False):
     ----------
     beam : array_like
         Array of laser beam intensity
-    plot_signal : bool, optional
-        Whether to produce a Matplotlib plot or not
+    area : array_like
+        Array representing the detector.
 
     Returns
     -------
@@ -188,14 +188,14 @@ def compute_signals(beam, area, plot_signal=False):
     """
     signal = beam * area
     x_shape, y_shape = signal.shape
-    right = np.sum(signal[0:x_shape, int(y_shape/2):y_shape])
-    left = np.sum(signal[0:x_shape, 0:int(y_shape/2)])
-    bottom = np.sum(signal[0:int(x_shape/2), 0:y_shape])
-    top = np.sum(signal[int(x_shape/2):x_shape, 0:y_shape])
+    right = np.sum(signal[0:x_shape, int(y_shape / 2):y_shape])
+    left = np.sum(signal[0:x_shape, 0:int(y_shape / 2)])
+    bottom = np.sum(signal[0:int(x_shape / 2), 0:y_shape])
+    top = np.sum(signal[int(x_shape / 2):x_shape, 0:y_shape])
     return np.sum(signal), left - right, top - bottom
 
 
-def signal_over_path(n, d0, δ, xmax, σ, track, n_samples, ϵ=1e-14):
+def signal_over_path(n, detector_diameter, quadrant_gap, x_max, sigma, track, n_samples, ϵ=1e-14):
     """
     This routine executes the compute_signals function multiple times over
     a user specified path function and returns the path and the expected
@@ -205,13 +205,13 @@ def signal_over_path(n, d0, δ, xmax, σ, track, n_samples, ϵ=1e-14):
     ----------
     n : int
         Number of cells to divide diameter up into
-    d0 : float
+    detector_diameter : float
         Diameter of detector in mm
-    δ : float
+    quadrant_gap : float
         Gap width between quadrants of detector in mm
-    xmax : float
+    x_max : float
         horizontal domain for sweeping across detector x from -xmax to +xmax
-    σ : float
+    sigma : float
         Width of gaussian beam
     track :
         A function describing path across detector
@@ -231,13 +231,15 @@ def signal_over_path(n, d0, δ, xmax, σ, track, n_samples, ϵ=1e-14):
     t_b : array_like
         List of the top minus bottom quadrants
     """
-    xp = np.linspace(-xmax, xmax, n_samples)   # create x coordinate array
-    area = create_detector(n, d0, δ, ϵ)  # create detector array
-    all_results = [compute_signals(laser(area, d0/n, x_val, 0, σ), area) for x_val in np.nditer(xp)]
+    xp = np.linspace(-x_max, x_max, n_samples)  # create x coordinate array
+    area = create_detector(n, detector_diameter, quadrant_gap, ϵ)  # create detector array
+    all_results = [
+        compute_signals(laser(area, detector_diameter / n, x_val, track(x_val, detector_diameter), sigma), area) for
+        x_val in np.nditer(xp)]
     return (xp, *zip(*all_results))
 
 
-def signal_over_time(n, d0, δ, tmax, σ, track, n_samples, amplitude, ϵ=1e-14):
+def signal_over_time(n, detector_diameter, quadrant_gap, t_max, sigma, track, n_samples, amplitude, ϵ=1e-14):
     """
     This routine executes the compute_signals function multiple times over
     a user specified TIME interval and returns the path and the expected
@@ -254,13 +256,13 @@ def signal_over_time(n, d0, δ, tmax, σ, track, n_samples, amplitude, ϵ=1e-14)
     ----------
     n : int
         The number of cells to divide diameter up into
-    d0 : float
+    detector_diameter : float
         Diameter of detector in mm
-    δ : float
+    quadrant_gap : float
         Gap width between quadrants of detector in mm
-    tmax : float
+    t_max : float
         Maximum time for simulation in seconds
-    σ : float
+    sigma : float
         width of gaussian beam in mm
     track
         name of function describing path across detector
@@ -288,18 +290,18 @@ def signal_over_time(n, d0, δ, tmax, σ, track, n_samples, amplitude, ϵ=1e-14)
     its current torsion fiber (40 seconds)
     """
     period = 40.00  # approx. period of our calibration ring pendulum
-    tp = np.linspace(0, tmax, n_samples)  # create time array
-    xp = amplitude*np.sin(2*np.pi*tp/period)  # create x coordinate array
-    yp = track(tp, d0)
+    tp = np.linspace(0, t_max, n_samples)  # create time array
+    xp = amplitude * np.sin(2 * np.pi * tp / period)  # create x coordinate array
+    yp = track(tp, detector_diameter)
 
-    x, y, area = create_detector(n, d0, δ, ϵ)  # create detector array
+    x, y, area = create_detector(n, detector_diameter, quadrant_gap, ϵ)  # create detector array
     sum_sig = []
     l_r = []
     t_b = []
 
     for x_val, y_val in np.nditer([xp, yp]):
-        beam = laser(x, y, x_val, y_val, σ)
-        s, l, t = compute_signals(n, d0, δ, beam, plot_signal=False)
+        beam = laser(x, y, x_val, y_val, sigma)
+        s, l, t = compute_signals(n, detector_diameter, quadrant_gap, beam)
         sum_sig.append(s)
         l_r.append(l)
         t_b.append(t)
@@ -307,9 +309,9 @@ def signal_over_time(n, d0, δ, tmax, σ, track, n_samples, amplitude, ϵ=1e-14)
     return tp, xp, sum_sig, l_r, t_b
 
 
-def welch_psd(V, dt):
-    sample_freq = 1/dt
-    f, psd = welch(V, sample_freq, window='hanning', nperseg=256,
+def welch_psd(v, dt):
+    sample_freq = 1 / dt
+    f, psd = welch(v, sample_freq, window='hanning', nperseg=256,
                    detrend='constant')
     return f, psd
 
@@ -320,81 +322,51 @@ def periodogram_psd(v, fs):
     return f, psd
 
 
-def SIN_PATH(t, d0):
-    return 0.5*d0*np.sin(2*np.pi*t/2.0)
+def sin_path(t, detector_diameter):
+    return 0.5 * detector_diameter * np.sin(2 * np.pi * t / 2.0)
 
 
-def CENTER_PATH(x, d0):
+def center_path(x, detector_diameter):
     return 0.0
 
 
-def HALF_PATH(x, d0):
-    return (d0/4)
+def half_path(x, detector_diameter):
+    return detector_diameter / 4
 
 
-def QUARTER_PATH(x, d0):
-    return d0/8
+def quarter_path(x, detector_diameter):
+    return detector_diameter / 8
 
 
-def power_spectrum(n, d0, δ, tmax, σ, track_func, n_samples, amplitude):
+def power_spectrum(n, d0, quadrant_gap, t_max, sigma, track_func, n_samples, amplitude):
     """
     This code uses the functions in physics.py to build a detector and
     simulate the motion of our laser on some path across the detector.
 
     """
-#   Physical Paramaters for our detector system:
-#
-#    d0  # diameter of photocell in mm
-#    δ   # gap between the 4 quadrants; also in mm
-#    σ   # measured gaussian radius of our laser beam
-#
-#   Simulation Parameters:
-#
-#    n           # choose a reasonable minimum n value
-#    ϵ           # fudge factor due to roundoff error in case where δ = 2Δ
-    Δ = d0/n     # grid size for simulation
-#    tmax        # maximum time to run for
-#    n_samples   # number of samples for path in time
-#    track_func  # path of laser across detector
-#    amplitude   # amplitude of oscillation in mm
+    #   Physical Paramaters for our detector system:
+    #
+    #    d0  # diameter of photocell in mm
+    #    δ   # gap between the 4 quadrants; also in mm
+    #    σ   # measured gaussian radius of our laser beam
+    #
+    #   Simulation Parameters:
+    #
+    #    n           # choose a reasonable minimum n value
+    #    ϵ           # fudge factor due to roundoff error in case where δ = 2Δ
+    delta = d0 / n  # grid size for simulation
+    #    t_max       # maximum time to run for
+    #    n_samples   # number of samples for path in time
+    #    track_func  # path of laser across detector
+    #    amplitude   # amplitude of oscillation in mm
     print("Building: ", n, "by", n, " Array")
-    print("Pixel Size: Δ = %.3f " % (Δ))
+    print("Pixel Size: Δ = %.3f " % delta)
 
-#   Now build the detector and return the detector response for a gaussian
-#   beam centered at (xc, yc) illumninating the detector.
+    #   Now build the detector and return the detector response for a gaussian
+    #   beam centered at (xc, yc) illuminating the detector.
 
-    tp, xp, s, lr, tb = signal_over_time(n, d0, δ, tmax, σ,
+    tp, xp, s, lr, tb = signal_over_time(n, d0, quadrant_gap, t_max, sigma,
                                          track_func, n_samples, amplitude)
-    f_lr, psd_lr = periodogram_psd(lr, n_samples/tmax)
-    f_tb, psd_tb = periodogram_psd(tb, n_samples/tmax)
+    f_lr, psd_lr = periodogram_psd(lr, n_samples / t_max)
+    f_tb, psd_tb = periodogram_psd(tb, n_samples / t_max)
     return tp, xp, s, lr, tb, f_lr, psd_lr, f_tb, psd_tb
-
-
-def plot_power_spectrum(tp, xp, s, lr, tb, f, psd, σ=0.32, fmax=0.25,
-                        p_label='Left-Right'):
-    """
-    This routine plots the (already computed) detector signal and it's power
-    spectrum.
-    """
-
-    import matplotlib.pyplot as plt
-    plt.rcParams["figure.figsize"] = [16, 9]
-    plt.subplot(121)
-    plt.plot(tp, lr, '-g', label=p_label)
-    plt.ylabel(r'Detector Signals', fontsize=16, color='b')
-    plt.xlabel(r'time (sec)', fontsize=16, color='b')
-    plt.legend(fontsize=12, loc=(1.05, 0.875))
-    plt.title(r'\textbf{Signals: laser diameter = %.3f}' % (σ),
-              fontsize=12)
-    tmax = tp[-1]
-    plt.xlim(0, tmax)
-    plt.subplot(122)
-    plt.plot(f, np.sqrt(psd))
-    plt.ylabel(r'Power Spectrum', fontsize=16)
-    plt.xlabel(r'frequency (Hz)', fontsize=16)
-    plt.grid()
-    plt.xlim(0, fmax)
-
-    plt.subplots_adjust(left=0.2, wspace=0.8, top=0.8)
-    plt.show()
-    return None
