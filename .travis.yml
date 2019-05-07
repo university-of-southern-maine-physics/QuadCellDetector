@@ -15,11 +15,46 @@ matrix:
       dist: xenial
       language: python
       python: 3.6
-
+    
     - os: linux
       dist: xenial
       language: python
       python: 3.5
+
+    - os: linux
+      dist: xenial
+      language: python
+      python: 3.4
+
+    - os: linux
+      dist: xenial
+      language: python
+      python: 3.3
+
+    - os: linux
+      dist: trusty
+      language: python
+      python: 3.7
+
+    - os: linux
+      dist: trusty
+      language: python
+      python: 3.6
+    
+    - os: linux
+      dist: trusty
+      language: python
+      python: 3.5
+
+    - os: linux
+      dist: trusty
+      language: python
+      python: 3.4
+
+    - os: linux
+      dist: trusty
+      language: python
+      python: 3.3
 
 before_install:
   - |
