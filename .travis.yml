@@ -92,9 +92,8 @@ before_install:
   
 # command to install dependencies
 install:
-  -|
-    pip install pytest
-    pip install .
+  - pip install pytest
+  - pip install .
 
 # command to run tests
 script:
