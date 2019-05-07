@@ -4,23 +4,17 @@ matrix:
   include:
     - os: osx
       language: generic
-      env: PYTHON_VERSION=3.5.1
+      env: PYTHON_VERSION=3.5.4
     
     - os: osx
       language: generic
       env: PYTHON_VERSION=3.6.8
-    
-    - os: windows
-      language: sh
-      env:
-        - PATH=/c/Python35:/c/Python35/Scripts:$PATH
-        - PYTHON_VERSION=3.4.9
   
     - os: windows
       language: sh
       env:
         - PATH=/c/Python35:/c/Python35/Scripts:$PATH
-        - PYTHON_VERSION=3.5.1
+        - PYTHON_VERSION=3.5.4
     
     - os: windows
       language: sh
@@ -44,16 +38,6 @@ matrix:
       python: 3.5
 
     - os: linux
-      dist: xenial
-      language: python
-      python: 3.4
-
-    - os: linux
-      dist: xenial
-      language: python
-      python: 3.3
-
-    - os: linux
       dist: trusty
       language: python
       python: 3.6
@@ -62,16 +46,6 @@ matrix:
       dist: trusty
       language: python
       python: 3.5
-
-    - os: linux
-      dist: trusty
-      language: python
-      python: 3.4
-
-    - os: linux
-      dist: trusty
-      language: python
-      python: 3.3
 
 before_install:
   - |
