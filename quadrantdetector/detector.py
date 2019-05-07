@@ -7,8 +7,7 @@ and mask it according to the specifications of our quandrant cell photodiode.
 """
 import numpy as np
 import numpy.ma as ma
-from scipy.signal import welch
-import scipy.signal as signal
+from quadrantdetector.sample_functions import periodogram_psd
 
 
 def laser(grid, grid_density, x_c, y_c, sigma):
@@ -125,7 +124,7 @@ def create_detector(n, detector_diameter, quadrant_gap, roundoff_margin=1e-14):
 
     delta = detector_diameter / n
     y, x = np.mgrid[-detector_diameter / 2 + delta / 2: detector_diameter / 2: delta,
-           -detector_diameter / 2 + delta / 2: detector_diameter / 2:delta]
+                    -detector_diameter / 2 + delta / 2: detector_diameter / 2: delta]
     # This computes the distance of each grid point from the origin
     # and then we extract a masked array of points where r_sqr is less
     # than the distance of each grid point from the origin:
@@ -149,12 +148,12 @@ def create_detector(n, detector_diameter, quadrant_gap, roundoff_margin=1e-14):
 
     partial_dead_x_and_y = (1 / delta ** 2) * (np.abs(x) + delta / 2 - quadrant_gap / 2) ** 2 * \
                            (
-                                   (np.abs(x) + delta / 2 - roundoff_margin > quadrant_gap / 2) &
-                                   (np.abs(x) - delta / 2 - roundoff_margin < quadrant_gap / 2) &
-                                   (np.abs(y) + delta / 2 - roundoff_margin > quadrant_gap / 2) &
-                                   (np.abs(y) + delta / 2 - roundoff_margin > quadrant_gap / 2) &
-                                   (np.abs(y) - delta / 2 - roundoff_margin < quadrant_gap / 2) &
-                                   (np.abs(x) + delta / 2 - roundoff_margin > quadrant_gap / 2)
+                            (np.abs(x) + delta / 2 - roundoff_margin > quadrant_gap / 2) &
+                            (np.abs(x) - delta / 2 - roundoff_margin < quadrant_gap / 2) &
+                            (np.abs(y) + delta / 2 - roundoff_margin > quadrant_gap / 2) &
+                            (np.abs(y) + delta / 2 - roundoff_margin > quadrant_gap / 2) &
+                            (np.abs(y) - delta / 2 - roundoff_margin < quadrant_gap / 2) &
+                            (np.abs(x) + delta / 2 - roundoff_margin > quadrant_gap / 2)
                            )
 
     gap_mask = all_dead  # not strictly needed, but
@@ -195,7 +194,8 @@ def compute_signals(beam, area):
     return np.sum(signal), left - right, top - bottom
 
 
-def signal_over_path(n, detector_diameter, quadrant_gap, x_max, sigma, track, n_samples, ϵ=1e-14):
+def signal_over_path(n, detector_diameter, quadrant_gap, x_max, sigma, track,
+                     n_samples, roundoff_margin=1e-14):
     """
     This routine executes the compute_signals function multiple times over
     a user specified path function and returns the path and the expected
@@ -214,10 +214,11 @@ def signal_over_path(n, detector_diameter, quadrant_gap, x_max, sigma, track, n_
     sigma : float
         Width of gaussian beam
     track :
-        A function describing path across detector
+        A function describing path across detector. Must take the
+        arguments (x, d0).
     n_samples : int
         Number of samples in domain; dx = 2 * xmax / n_samples
-    ϵ : float
+    roundoff_margin : float
         Fudge factor needed for roundoff error (default = 1e-14)
 
     Returns
@@ -232,14 +233,15 @@ def signal_over_path(n, detector_diameter, quadrant_gap, x_max, sigma, track, n_
         List of the top minus bottom quadrants
     """
     xp = np.linspace(-x_max, x_max, n_samples)  # create x coordinate array
-    area = create_detector(n, detector_diameter, quadrant_gap, ϵ)  # create detector array
-    all_results = [
-        compute_signals(laser(area, detector_diameter / n, x_val, track(x_val, detector_diameter), sigma), area) for
-        x_val in np.nditer(xp)]
+    area = create_detector(n, detector_diameter, quadrant_gap, roundoff_margin)
+    all_results = [compute_signals(laser(area, detector_diameter / n, x_val,
+                                   track(x_val, detector_diameter), sigma), area)
+                   for x_val in np.nditer(xp)]
     return (xp, *zip(*all_results))
 
 
-def signal_over_time(n, detector_diameter, quadrant_gap, t_max, sigma, track, n_samples, amplitude, ϵ=1e-14):
+def signal_over_time(n, detector_diameter, quadrant_gap, t_max, sigma, track,
+                     n_samples, amplitude, roundoff_margin=1e-14):
     """
     This routine executes the compute_signals function multiple times over
     a user specified TIME interval and returns the path and the expected
@@ -265,9 +267,12 @@ def signal_over_time(n, detector_diameter, quadrant_gap, t_max, sigma, track, n_
     sigma : float
         width of gaussian beam in mm
     track
-        name of function describing path across detector
+        name of function describing path across detector. Must take the
+        arguments (x, d0).
     n_samples : int
-        number of samples in time domain; dt = 2*tmax/n_samples
+        number of samples in time domain; dt = 2*t_max/n_samples
+    roundoff_margin : float
+        Fudge factor needed for roundoff error (default = 1e-14)
 
     Returns
     -------
@@ -289,56 +294,27 @@ def signal_over_time(n, detector_diameter, quadrant_gap, t_max, sigma, track, n_
     2. The period of the motion is set to mimic our pendulum with
     its current torsion fiber (40 seconds)
     """
-    period = 40.00  # approx. period of our calibration ring pendulum
-    tp = np.linspace(0, t_max, n_samples)  # create time array
-    xp = amplitude * np.sin(2 * np.pi * tp / period)  # create x coordinate array
+
+    # approx. period of our calibration ring pendulum
+    period = 40.00
+
+    # create time array
+    tp = np.linspace(0, t_max, n_samples)
+
+    # create x coordinate array
+    xp = amplitude * np.sin(2 * np.pi * tp / period)
     yp = track(tp, detector_diameter)
 
-    x, y, area = create_detector(n, detector_diameter, quadrant_gap, ϵ)  # create detector array
-    sum_sig = []
-    l_r = []
-    t_b = []
+    area = create_detector(n, detector_diameter, quadrant_gap,
+                           roundoff_margin=roundoff_margin)
 
-    for x_val, y_val in np.nditer([xp, yp]):
-        beam = laser(x, y, x_val, y_val, sigma)
-        s, l, t = compute_signals(n, detector_diameter, quadrant_gap, beam)
-        sum_sig.append(s)
-        l_r.append(l)
-        t_b.append(t)
+    all_sig = [compute_signals(laser(area, x_val, y_val, sigma), area)
+               for x_val, y_val in np.nditer([xp, yp])]
 
-    return tp, xp, sum_sig, l_r, t_b
+    return (tp, xp, *zip(*all_sig))
 
 
-def welch_psd(v, dt):
-    sample_freq = 1 / dt
-    f, psd = welch(v, sample_freq, window='hanning', nperseg=256,
-                   detrend='constant')
-    return f, psd
-
-
-def periodogram_psd(v, fs):
-    f, psd = signal.periodogram(v, fs,
-                                detrend="constant", scaling='spectrum')
-    return f, psd
-
-
-def sin_path(t, detector_diameter):
-    return 0.5 * detector_diameter * np.sin(2 * np.pi * t / 2.0)
-
-
-def center_path(x, detector_diameter):
-    return 0.0
-
-
-def half_path(x, detector_diameter):
-    return detector_diameter / 4
-
-
-def quarter_path(x, detector_diameter):
-    return detector_diameter / 8
-
-
-def power_spectrum(n, d0, quadrant_gap, t_max, sigma, track_func, n_samples, amplitude):
+def power_spectrum(n, d0, quadrant_gap, tmax, σ, track_func, n_samples, amplitude):
     """
     This code uses the functions in physics.py to build a detector and
     simulate the motion of our laser on some path across the detector.
@@ -347,7 +323,7 @@ def power_spectrum(n, d0, quadrant_gap, t_max, sigma, track_func, n_samples, amp
     #   Physical Paramaters for our detector system:
     #
     #    d0  # diameter of photocell in mm
-    #    δ   # gap between the 4 quadrants; also in mm
+    #    quadrant_gap   # gap between the 4 quadrants; also in mm
     #    σ   # measured gaussian radius of our laser beam
     #
     #   Simulation Parameters:

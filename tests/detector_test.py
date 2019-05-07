@@ -13,8 +13,8 @@ def get_detectors():
     """
     return [(gap, detector.create_detector(axis_size, 10, gap))
             for gap in np.linspace(1e-14, 1, 50)] \
-           + [(gap, detector.create_detector(axis_size, 10, gap))
-              for gap in np.linspace(1, 11, 50)]
+        + [(gap, detector.create_detector(axis_size, 10, gap))
+           for gap in np.linspace(1, 11, 50)]
 
 
 def test_detector_init(get_detectors):
