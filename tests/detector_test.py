@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
-from quadrantdetector import detector
+import quadrantdetector.detector as qd
+import quadrantdetector.sample_functions as qsf
 
 axis_size = 1000
 
@@ -11,9 +12,9 @@ def get_detectors():
     Returns a list of 200 detectors with increasingly large gaps, the last
     being gaps larger than the actual detector.
     """
-    return [(gap, detector.create_detector(axis_size, 10, gap))
+    return [(gap, qd.create_detector(axis_size, 10, gap))
             for gap in np.linspace(1e-14, 1, 50)] \
-        + [(gap, detector.create_detector(axis_size, 10, gap))
+        + [(gap, qd.create_detector(axis_size, 10, gap))
            for gap in np.linspace(1, 11, 50)]
 
 
@@ -49,20 +50,55 @@ def test_laser(get_detectors):
     # approximately 1 when sigma << detector diameter.
     # Clearly, this only holds when the gap is small, otherwise the sum will
     # be even smaller.
-    for gap, detect in get_detectors:
-        laser = detector.laser(detect, 10 / axis_size, 0, 0, 1.0)
-        sum_s = np.sum(laser * detect)
+    for sigma in np.arange(0.1, 1.5, 0.1):
+        for gap, detect in get_detectors:
+            laser = qd.laser(detect, 10 / axis_size, 0, 0, sigma)
+            sum_s = np.sum(laser * detect)
 
-        if gap < 1e-2:
-            assert 1 >= sum_s > 0.99
-        if gap > 1:
-            assert 0.99 >= sum_s >= 0
+            if gap < 1e-2:
+                assert 1 >= sum_s > 0.99
+            if gap > 1:
+                assert 0.99 >= sum_s >= 0
 
 
 def test_compute_signals(get_detectors):
     for gap, detect in get_detectors:
         # get_detectors created a sequence of detectors centered, so all
         # signals should be symmetric.
-        sum_signal, lr_signal, tb_signal = detector.compute_signals(
-            detector.laser(detect, 10 / axis_size, 0, 0, 2.0), detect)
+        sum_signal, lr_signal, tb_signal = qd.compute_signals(
+            qd.laser(detect, 10 / axis_size, 0, 0, 2.0), detect)
         assert sum_signal >= lr_signal and sum_signal >= tb_signal
+
+def test_signal_over_path():
+    # Deal with our linear tracks first.
+    for track_func in [qsf.center_path, qsf.half_path, qsf.quarter_path]:
+        # Run a track with a detector of diameter 10mm, from -20mm to +20mm
+        # WLOG, sigma = 1, and we take 20 points along the track.
+        x_positions, sum_signals, lr_signals, tb_signals = \
+            qd.signal_over_path(axis_size, 10, 0, 20, 1, track_func, 40)
+
+        for curr_x, curr_sum, curr_lr, curr_tb in zip(x_positions, sum_signals, lr_signals, tb_signals):
+            # In all cases...
+            assert (curr_sum > curr_lr or abs(curr_sum - curr_lr) < 1e-6) \
+               and (curr_sum >= curr_tb or abs(curr_sum - curr_tb) < 1e-6)
+
+            # Check sums based on position.
+            if curr_x >= -10 and curr_x <= 10:
+                assert curr_sum > 0
+            else:
+                assert curr_sum < 0.1
+
+            if track_func == qsf.center_path:
+                assert 0.1 > curr_tb > -0.1
+
+            if track_func == qsf.half_path:
+                if curr_x < 3 and -3 < curr_x:
+                    # Should be noticably biased towards the top
+                    assert 1 > curr_tb > 0.75
+
+            if track_func == qsf.quarter_path:
+                if curr_x < 3 and -3 < curr_x:
+                    # Should be somewhat biased towards the top
+                    assert 1 > curr_tb > 0.5
+
+        assert True
