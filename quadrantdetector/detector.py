@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jul 16 14:06:26 2018
 This code defines functions needed to create a gaussian laser beam
 and mask it according to the specifications of our quandrant cell photodiode.
-@author: Paul Nakroshis
 """
 import numpy as np
 import numpy.ma as ma
@@ -42,9 +40,9 @@ def laser(grid, grid_density, x_c, y_c, sigma):
     y_shape = (grid.shape[1] / 2) * grid_density
     offset = grid_density / 2
     y, x = np.ogrid[-x_shape + offset:x_shape:grid_density,
-           -y_shape + offset:y_shape:grid_density]
+                    -y_shape + offset:y_shape:grid_density]
     return 1 / (2 * np.pi * sigma ** 2) \
-           * np.exp(-((x - x_c) ** 2 + (y - y_c) ** 2) / (2 * sigma ** 2))
+        * (np.exp(-((x - x_c) ** 2 + (y - y_c) ** 2) / (2 * sigma ** 2)))
 
 
 def n_critical(detector_diameter, quadrant_gap):
@@ -87,7 +85,7 @@ def create_detector(n, detector_diameter, quadrant_gap, roundoff_margin=1e-14):
         Diameter of full detector (in mm)
     quadrant_gap : float
         Gap width between the quadrants of the detector (in mm)
-    ϵ : float
+    roundoff_margin : float
         Fudge factor needed for round-off error (default = 1e-14)
 
     Returns
@@ -212,8 +210,8 @@ def signal_over_path(n, detector_diameter, quadrant_gap, x_max, sigma, track,
     x_max : float
         horizontal domain for sweeping across detector x from -xmax to +xmax
     sigma : float
-        Width of gaussian beam
-    track :
+        Width of gaussian beam,
+    track
         A function describing path across detector. Must take the
         arguments (x, d0).
     n_samples : int
