@@ -25,7 +25,8 @@ def test_detector_init(get_detectors):
         axis_0_zeros = 0
         axis_1_zeros = 0
         density = axis_size / 10
-        inset = min(int((axis_size // 2) + (gap * density // 2) + 2), axis_size - 1)
+        inset = min(int((axis_size // 2) + (gap * density // 2) + 2),
+                    axis_size - 1)
         # Use the fact that the detector is NxN for easier checking.
         for i in range(len(detect)):
             # On each gap, there is a minimum of gap - 2 cells on the detector
@@ -69,6 +70,7 @@ def test_compute_signals(get_detectors):
             qd.laser(detect, 10 / axis_size, 0, 0, 2.0), detect)
         assert sum_signal >= lr_signal and sum_signal >= tb_signal
 
+
 def test_signal_over_path():
     # Deal with our linear tracks first.
     for track_func in [qsf.center_path, qsf.half_path, qsf.quarter_path]:
@@ -77,7 +79,8 @@ def test_signal_over_path():
         x_positions, sum_signals, lr_signals, tb_signals = \
             qd.signal_over_path(axis_size, 10, 0, 20, 1, track_func, 40)
 
-        for curr_x, curr_sum, curr_lr, curr_tb in zip(x_positions, sum_signals, lr_signals, tb_signals):
+        for curr_x, curr_sum, curr_lr, curr_tb in zip(x_positions, sum_signals,
+                                                      lr_signals, tb_signals):
             # In all cases...
             assert (curr_sum > curr_lr or abs(curr_sum - curr_lr) < 1e-6) \
                and (curr_sum >= curr_tb or abs(curr_sum - curr_tb) < 1e-6)
@@ -101,4 +104,3 @@ def test_signal_over_path():
                     # Should be somewhat biased towards the top
                     assert 1 > curr_tb > 0.5
 
-        assert True
