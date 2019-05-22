@@ -28,14 +28,19 @@ def test_detector_init(get_detectors):
         midpoint = int(axis_size / 2)
         # Positive value describing the number of zero-only cells in the width
         # of the detector gap.
-        gap_zero_bounds = min(int(gap * density / 2), axis_size - 1)
+        gap_width = min(int(gap * density / 2), int(axis_size / 2))
     
         # Sum the 2d areas that should all be zero. Remember, end bounds for
         # slicing are not inclusive.
+        vertical_block = detect[midpoint - gap_width: midpoint + gap_width, :]
+        horizontal_block = detect[:, midpoint - gap_width: midpoint + gap_width]
 
-        # TODO: The +1 causes failure, removing it, everything is fine.
-        assert detect[midpoint - gap_zero_bounds: midpoint + gap_zero_bounds + 1, :].sum() == 0
-        assert detect[:, midpoint - gap_zero_bounds: midpoint + gap_zero_bounds + 1].sum() == 0
+        # Common-sense check to make sure we did our slicing right.
+        assert vertical_block.shape[0] == 2 * gap_width \
+            and horizontal_block.shape[1] == 2 * gap_width
+
+        # Must be an all-zero area.
+        assert vertical_block.sum() == 0 and horizontal_block.sum() == 0
 
 
 def test_laser(get_detectors):
