@@ -80,7 +80,8 @@ def create_detector(n, detector_diameter, quadrant_gap, roundoff_margin=1e-14):
     Parameters
     ----------
     n : int
-        Number of chucks to divide detector into
+        Number of chunks to divide detector into, rounded up to the nearest
+        even number.
     detector_diameter : float
         Diameter of full detector (in mm)
     quadrant_gap : float
@@ -119,6 +120,10 @@ def create_detector(n, detector_diameter, quadrant_gap, roundoff_margin=1e-14):
     detector eliminated. Technically, I am using my mask in the OPPOSITE manner
     in which numpy intends.
     """
+
+    # If odd
+    if n % 2:
+        n += 1
 
     delta = detector_diameter / n
     y, x = np.mgrid[-detector_diameter / 2 + delta / 2: detector_diameter / 2: delta,
