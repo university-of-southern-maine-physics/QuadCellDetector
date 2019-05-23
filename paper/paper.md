@@ -60,7 +60,7 @@ The goals of this package are to allow the user to
     spot's path across the detector.   
 
 It should be noted that theoretical papers on this matter (see for instance 
-[@QPD-Sensitivity] and [@Resolution-Limit], and even [@Zucker]) either do not 
+[@QPD-Sensitivity] and [@Zucker]) do not attempt to
 account for the loss of signal due to the gap in the photodetector. This package
 allows the user to accurately model the detector response by including the actual
 specifications a given circular photodiode, and it correctly deals with the lost
