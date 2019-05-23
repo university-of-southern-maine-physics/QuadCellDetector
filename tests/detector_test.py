@@ -2,19 +2,36 @@ import pytest
 import numpy as np
 import quadrantdetector.detector as qd
 import quadrantdetector.sample_functions as qsf
+from scipy import integrate
 
-axis_size = 1000  # cells
-detector_size = 10  # mm
+axis_size = 2000  # cells
+detector_size = 16  # mm
 
+def intensity(y, x, sigma):
+    """ Computes the intensity of a Gaussian beam centered on the origin at the position (x,y)"""
+  
+    return (1/(2*np.pi*sigma**2)) * np.exp(-(x**2 + y**2)/(2*sigma**2))
+          
+def total_signal(delta, sigma, R):
+    """ Computes the theoretical intensity by subtracing off the signal lost due to the detector's 
+    finite size and the gap beteen the quadrants.
+    """
+    signal = integrate.dblquad(intensity, 0, R, 0, \
+                lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
+    gap1 = integrate.dblquad(intensity, 0, delta/2,  0, \
+                             lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
+    gap2 = integrate.dblquad(intensity, 0, delta/2, 0, delta/2,\
+                             args=(sigma,))[0]
+    return max(4*signal -8*gap1 -4*gap2,0)
 
 @pytest.fixture(scope='session')
 def get_detectors():
     """
-    Returns a list of 200 detectors with increasingly large gaps, the last
+    Returns a list of 100 detectors with increasingly large gaps, the last
     being gaps larger than the actual detector.
     """
     return [(gap, qd.create_detector(axis_size, detector_size, gap))
-            for gap in np.linspace(1e-14, 1, 50)] \
+            for gap in np.linspace(0, 1, 50)] \
         + [(gap, qd.create_detector(axis_size, detector_size, gap))
            for gap in np.linspace(1, 11, 50)]
 
@@ -49,16 +66,24 @@ def test_laser(get_detectors):
     # approximately 1 when sigma << detector diameter.
     # Clearly, this only holds when the gap is small, otherwise the sum will
     # be even smaller.
-    for sigma in np.arange(0.1, 1.5, 0.1):
+    for sigma in np.arange(0.01, 7.02, 0.25):
         for gap, detect in get_detectors:
-            laser = qd.laser(detect, detector_size / axis_size, 0, 0, sigma)
-            sum_s = np.sum(laser * detect)
+            if gap == 0:
+                laser = qd.laser(detect, detector_size / axis_size, 0, 0, sigma)
+                sum_s = np.sum(laser * detect)
+                print('Signal = ',sum_s)
+                assert 1.01 >= sum_s > 0.99
+                if np.abs(sigma - 6.75)<0.1 :
+                    print('sigma = ', sigma)
+                    assert .504 < sum_s <0.505
+            #if gap > 1:
+            #    assert 0.99 >= sum_s >= 0
+            #theory = total_signal(gap, sigma, 10/2)
+            #if(sigma > 0.2 and np.abs(sum_s-theory) > 0.01):
+                #print(gap, sum_s - theory)
 
-            if gap < 1e-2:
-                assert 1 >= sum_s > 0.99
-            if gap > 1:
-                assert 0.99 >= sum_s >= 0
-
+    
+    
 
 def test_compute_signals(get_detectors):
     for gap, detect in get_detectors:
