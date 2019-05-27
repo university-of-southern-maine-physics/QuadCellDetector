@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
 """
 This code defines functions needed to create a gaussian laser beam
 and mask it according to the specifications of our quandrant cell photodiode.
 """
+
 import numpy as np
 import numpy.ma as ma
 from quadrantdetector.sample_functions import periodogram_psd
@@ -71,7 +71,7 @@ def n_critical(diameter, gap):
     return critical
 
 
-def create_detector(n, diameter, gap, roundoff=1e-14):
+def create_detector(n, diameter, gap, roundoff=1e-14, outer_circular_mask=True):
     """
     This routine creates the entire detector array. It does so by assuming a
     square array and eliminating chunks not within the circular detector
@@ -131,7 +131,8 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
     # This computes the distance of each grid point from the origin
     # and then we extract a masked array of points where r_sqr is less
     # than the distance of each grid point from the origin:
-    r_sqr = x ** 2 + y ** 2
+    r_sqr = x ** 2 + y ** 2 if outer_circular_mask else x + y
+
     inside = ma.getmask(ma.masked_where(r_sqr <= (diameter / 2) ** 2, x))
 
     # This portion takes care of masking out elements of the detector where
