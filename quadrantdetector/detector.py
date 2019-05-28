@@ -88,6 +88,8 @@ def create_detector(n, diameter, gap, roundoff=1e-14, outer_circular_mask=True):
         Gap width between the quadrants of the detector (in mm)
     roundoff : float
         Scalar fudge factor needed for round-off error (default = 1e-14)
+    outer_circular_mask: boolean
+        if True, then detector is circular, if False, detector is square
 
     Returns
     -------
