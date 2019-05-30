@@ -29,8 +29,11 @@ bibliography: paper.bib
 of a quadrant cell photodiode to the passage of a Gaussian laser beam across 
 its surface. Quadrant cell photodiodes (as the name implies) are silicon 
 photodiodes split into four quadrants (with a small gap separating each 
-quadrant). The detector geomety parameters are shown in  
-![Figure 1.](geometry.png "Detector Geometry")  
+quadrant). The detector geomety parameters are shown in the figure below (with numerical
+values that match our detector):<br>
+
+<img src="detector.png" alt="Figure 1" width="500"/><br> 
+
 Another quadrant cell detector variety has a square shape (see, for example
 [@square-photodiode]), but this package does *not* implement this square 
 geometry. 
@@ -68,9 +71,10 @@ cannot compute a closed form symbolic solution. Our python package
 allows the user to accurately numerically model the detector response by including the actual
 specifications a given circular photodiode, and it correctly deals with the lost
 signal in the gap. 
+
 # Acknowledgements
 
-We thank Kallee Gallant for drawing the figures in Tikz! 
+We thank Kallee Gallant for drawing the figure in Tikz! 
 
 
 # References
