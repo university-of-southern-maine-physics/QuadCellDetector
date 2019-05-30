@@ -5,7 +5,7 @@ import quadrantdetector.sample_functions as qsf
 from scipy import integrate
 
 axis_size = 1000  # cells
-detector_size = 16  # mm
+detector_size = 16  #  diameter in mm
 
 
 def intensity(y, x, sigma):
@@ -75,7 +75,7 @@ def test_laser(get_detectors):
 
             # Note that when sum_s is increasingly large, we approach the expected value.
             # When it decreases, we fall away from our expected value.
-            print(sum_s, sum_s - total_signal(gap, sigma, detector_size / 2))
+            print(sum_s,',', sum_s - total_signal(gap, sigma, detector_size / 2))
 
 
 def test_compute_signals(get_detectors):
