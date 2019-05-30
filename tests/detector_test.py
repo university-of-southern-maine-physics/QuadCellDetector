@@ -32,7 +32,7 @@ def get_detectors():
     Returns a list of 100 detectors with increasingly large gaps, the last
     being gaps larger than the actual detector.
     """
-    return [(gap, qd.create_detector(axis_size, detector_size, gap, outer_circular_mask=False))
+    return [(gap, qd.create_detector(axis_size, detector_size, gap, outer_circular_mask=True))
             for gap in np.linspace(0, 1, 5)] \
      #   + [(gap, qd.create_detector(axis_size, detector_size, gap))
      #      for gap in np.linspace(1, 11, 50)]
