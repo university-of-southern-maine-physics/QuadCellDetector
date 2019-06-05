@@ -70,12 +70,12 @@ def test_laser(get_detectors):
     # be even smaller.
     for sigma in np.arange(0.01, 7.02, 0.25):
         for gap, detect in get_detectors:
-            laser = qd.laser(detect, detector_size / axis_size, 0, 0, sigma)
-            sum_s = np.sum(laser * detect)
+            laser = qd.laser(detect, 0, 0, sigma)
+            sum_s = np.sum(laser)
 
             # Note that when sum_s is increasingly large, we approach the expected value.
             # When it decreases, we fall away from our expected value.
-            print(sum_s,',', sum_s - total_signal(gap, sigma, detector_size / 2))
+            print(sum_s,',', gap, ',', sum_s - total_signal(gap, sigma, detector_size / 2))
 
 
 def test_compute_signals(get_detectors):

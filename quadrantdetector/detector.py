@@ -8,41 +8,19 @@ import numpy.ma as ma
 from quadrantdetector.sample_functions import periodogram_psd
 
 
-def laser(grid, grid_density, x_c, y_c, sigma):
-    """
-    This cute function uses the wondrousness of NumPy to produce a gaussian
-    beam in one line of code. The resulting array will be masked in the
-    compute_signals function to eliminate the beam outside the detector
-    and also to account for the dead zones due to the gap.
-
-    Parameters
-    ----------
-    grid : array_like
-        N by N numpy position arrays containing the detector grid points
-    grid_density : float
-        Value that describes how dense this representation of the grid is.
-        Is equal to the diameter of the detector divided by the number of
-        points along a given axis; this is the same as d0 / n for
-        create_detector.
-    x_c, y_c : float
-        x and y Cartesian coordinates of the center of the laser spot
-        (not necessarily on the detector!)
-    sigma : float
-        the standard deviation for the gaussian beam; FWHM ~ 2.355σ
-
-    Returns
-    -------
-    array_like
-        NumPy array of normalized beam intensity values over the detector array
-    """
-    grid_density = grid_density if 0 < grid_density else 1 / grid_density
-    x_shape = (grid.shape[0] / 2) * grid_density
-    y_shape = (grid.shape[1] / 2) * grid_density
-    offset = grid_density / 2
-    y, x = np.ogrid[-x_shape + offset:x_shape:grid_density,
-                    -y_shape + offset:y_shape:grid_density]
-    return 1 / (2 * np.pi * sigma ** 2) \
-        * (np.exp(-((x - x_c) ** 2 + (y - y_c) ** 2) / (2 * sigma ** 2)))
+def laser(grid, x_c, y_c, sigma, delta):
+    # We don't exist in Cartesian coords, so convert.
+    n = grid.shape[0]
+    x_c += n // 2
+    y_c += n // 2
+    
+    scale_factor = np.sqrt(grid.max())
+    
+    laser_func = lambda x, y: 1 / (2 * np.pi * sigma ** 2) \
+        * (np.exp(-((scale_factor * (x - x_c)) ** 2 +\
+                    (scale_factor * (y - y_c)) ** 2) / (2 * sigma ** 2)))
+    
+    return np.fromfunction(laser_func, (n, n), dtype=float) * grid
 
 
 def n_critical(diameter, gap):
@@ -133,39 +111,39 @@ def create_detector(n, diameter, gap, roundoff=1e-14, outer_circular_mask=True):
     # This computes the distance of each grid point from the origin
     # and then we extract a masked array of points where r_sqr is less
     # than the distance of each grid point from the origin:
-    r_sqr = x ** 2 + y ** 2 if outer_circular_mask else x + y
+    r_sqr = x ** 2 + y ** 2
 
     inside = ma.getmask(ma.masked_where(r_sqr <= (diameter / 2) ** 2, x))
 
     # This portion takes care of masking out elements of the detector where
     # the gap exists. It returns an array of light intensity over the detector.
 
-    all_dead = (np.abs(x) + delta / 2 - roundoff > gap / 2) \
-        & (np.abs(y) + delta / 2 - roundoff > gap / 2)
+    all_dead = (np.abs(x) + delta / 2 > gap / 2) \
+        & (np.abs(y) + delta / 2 > gap / 2)
 
-    partial_dead_x_only = (np.abs(x) + delta / 2 - roundoff > gap / 2) & \
-                          (np.abs(x) - delta / 2 - roundoff < gap / 2) & \
-                          (np.abs(y) - delta / 2 - roundoff > gap / 2)
-    partial_dead_y_only = (np.abs(y) + delta / 2 - roundoff > gap / 2) & \
-                          (np.abs(y) - delta / 2 - roundoff < gap / 2) & \
-                          (np.abs(x) - delta / 2 - roundoff > gap / 2)
+    partial_dead_x_only = (np.abs(x) + delta / 2 > gap / 2) & \
+                          (np.abs(x) - delta / 2  < gap / 2) & \
+                          (np.abs(y) - delta / 2 > gap / 2)
+    partial_dead_y_only = (np.abs(y) + delta / 2 > gap / 2) & \
+                          (np.abs(y) - delta / 2 < gap / 2) & \
+                          (np.abs(x) - delta / 2 > gap / 2)
     partial_dead_x_or_y = (1 / delta) * (np.abs(x) + delta / 2 - gap / 2) * partial_dead_x_only + \
                           (1 / delta) * (np.abs(y) + delta / 2 - gap / 2) * partial_dead_y_only
 
     partial_dead_x_and_y = (1 / delta ** 2) * (np.abs(x) + delta / 2 - gap / 2) ** 2 * \
                            (
-                            (np.abs(x) + delta / 2 - roundoff > gap / 2) &
-                            (np.abs(x) - delta / 2 - roundoff < gap / 2) &
-                            (np.abs(y) + delta / 2 - roundoff > gap / 2) &
-                            (np.abs(y) + delta / 2 - roundoff > gap / 2) &
-                            (np.abs(y) - delta / 2 - roundoff < gap / 2) &
-                            (np.abs(x) + delta / 2 - roundoff > gap / 2)
+                            (np.abs(x) + delta / 2 > gap / 2) &
+                            (np.abs(x) - delta / 2 < gap / 2) &
+                            (np.abs(y) + delta / 2 > gap / 2) &
+                            (np.abs(y) + delta / 2 > gap / 2) &
+                            (np.abs(y) - delta / 2 < gap / 2) &
+                            (np.abs(x) + delta / 2 > gap / 2)
                            )
 
     gap_mask = all_dead  # not strictly needed, but
-    partial_mask = partial_dead_x_or_y + partial_dead_x_and_y
-    partial_mask[partial_mask == 0] = 1
-    active_area = inside * gap_mask * partial_mask * delta ** 2
+#    partial_mask = partial_dead_x_or_y + partial_dead_x_and_y
+#    partial_mask[partial_mask == 0] = 1
+    active_area = inside * gap_mask * delta ** 2
 
     return active_area
 
