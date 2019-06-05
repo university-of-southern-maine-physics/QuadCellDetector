@@ -5,7 +5,7 @@ import quadrantdetector.sample_functions as qsf
 from scipy import integrate
 
 axis_size = 1000  # cells
-detector_size = 16  # mm
+detector_size = 16  #  diameter in mm
 
 
 def intensity(y, x, sigma):
@@ -32,7 +32,7 @@ def get_detectors():
     Returns a list of 100 detectors with increasingly large gaps, the last
     being gaps larger than the actual detector.
     """
-    return [(gap, qd.create_detector(axis_size, detector_size, gap, outer_circular_mask=False))
+    return [(gap, qd.create_detector(axis_size, detector_size, gap, outer_circular_mask=True))
             for gap in np.linspace(0, 1, 5)] \
      #   + [(gap, qd.create_detector(axis_size, detector_size, gap))
      #      for gap in np.linspace(1, 11, 50)]
@@ -75,7 +75,7 @@ def test_laser(get_detectors):
 
             # Note that when sum_s is increasingly large, we approach the expected value.
             # When it decreases, we fall away from our expected value.
-            print(sum_s, sum_s - total_signal(gap, sigma, detector_size / 2))
+            print(sum_s,',', sum_s - total_signal(gap, sigma, detector_size / 2))
 
 
 def test_compute_signals(get_detectors):
