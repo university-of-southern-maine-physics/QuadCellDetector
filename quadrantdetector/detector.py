@@ -8,7 +8,7 @@ import numpy.ma as ma
 from quadrantdetector.sample_functions import periodogram_psd
 
 
-def laser(grid, grid_density, x_c, y_c, sigma):
+def laser(diameter, n, x_c, y_c, sigma):
     """
     This cute function uses the wondrousness of NumPy to produce a gaussian
     beam in one line of code. The resulting array will be masked in the
@@ -17,13 +17,11 @@ def laser(grid, grid_density, x_c, y_c, sigma):
 
     Parameters
     ----------
-    grid : array_like
-        N by N numpy position arrays containing the detector grid points
-    grid_density : float
-        Value that describes how dense this representation of the grid is.
-        Is equal to the diameter of the detector divided by the number of
-        points along a given axis; this is the same as d0 / n for
-        create_detector.
+    diameter : float
+        Diameter of full detector (in mm)
+    n : int
+        Number of chunks to divide detector into, rounded up to the nearest
+        even number.
     x_c, y_c : float
         x and y Cartesian coordinates of the center of the laser spot
         (not necessarily on the detector!)
@@ -35,15 +33,10 @@ def laser(grid, grid_density, x_c, y_c, sigma):
     array_like
         NumPy array of normalized beam intensity values over the detector array
     """
-    grid_density = grid_density if 0 < grid_density else 1 / grid_density
-    x_shape = (grid.shape[0] / 2) * grid_density
-    y_shape = (grid.shape[1] / 2) * grid_density
-    offset = grid_density / 2
-    y, x = np.ogrid[-x_shape + offset:x_shape:grid_density,
-                    -y_shape + offset:y_shape:grid_density]
+    delta = diameter/n
+    y, x = np.mgrid[-diameter/2 + delta/2: diameter/2: delta, -diameter/2 + delta/2: diameter/2: delta]
     return 1 / (2 * np.pi * sigma ** 2) \
         * (np.exp(-((x - x_c) ** 2 + (y - y_c) ** 2) / (2 * sigma ** 2)))
-
 
 def n_critical(diameter, gap):
     """
