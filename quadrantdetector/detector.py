@@ -71,7 +71,7 @@ def n_critical(diameter, gap):
     return critical
 
 
-def create_detector(n, diameter, gap, roundoff=1e-14, outer_circular_mask=True):
+def create_detector(n, diameter, gap, roundoff=1e-14):
     """
     This routine creates the entire detector array. It does so by assuming a
     square array and eliminating chunks not within the circular detector
@@ -133,7 +133,7 @@ def create_detector(n, diameter, gap, roundoff=1e-14, outer_circular_mask=True):
     # This computes the distance of each grid point from the origin
     # and then we extract a masked array of points where r_sqr is less
     # than the distance of each grid point from the origin:
-    r_sqr = x ** 2 + y ** 2 if outer_circular_mask else x + y
+    r_sqr = x ** 2 + y ** 2 
 
     inside = ma.getmask(ma.masked_where(r_sqr <= (diameter / 2) ** 2, x))
 
