@@ -5,6 +5,7 @@ and mask it according to the specifications of our quandrant cell photodiode.
 
 import numpy as np
 import numpy.ma as ma
+from scipy import integrate
 from quadrantdetector.sample_functions import periodogram_psd
 
 
@@ -34,9 +35,25 @@ def laser(diameter, n, x_c, y_c, sigma):
         NumPy array of normalized beam intensity values over the detector array
     """
     delta = diameter/n
-    y, x = np.mgrid[-diameter/2 + delta/2: diameter/2: delta, -diameter/2 + delta/2: diameter/2: delta]
+    y, x = np.mgrid[-diameter/2 + delta/2: diameter/2 + delta/2: delta, -diameter/2 + delta/2: diameter/2 + delta/2: delta]
     return 1 / (2 * np.pi * sigma ** 2) \
         * (np.exp(-((x - x_c) ** 2 + (y - y_c) ** 2) / (2 * sigma ** 2)))
+        
+
+def intensity(y, x, sigma):
+    """ Computes the intensity of a Gaussian beam centered on the origin at the position (x,y)"""
+    return (1/(2*np.pi*sigma**2)) * np.exp(-(x**2 + y**2)/(2*sigma**2))
+
+
+        
+def total_signal(delta, sigma, R):
+    """ Computes the theoretical sum signal by numerical integration; 
+        Assumes a centered beam.
+    """
+    signal = 4* integrate.dblquad(intensity, delta/2, np.sqrt(R**2 - 0.25*delta**2), delta/2,
+                               lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
+    return signal
+
 
 def n_critical(diameter, gap):
     """
@@ -119,8 +136,8 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
         n += 1
 
     delta = diameter / n
-    y, x = np.mgrid[-diameter / 2 + delta / 2: diameter / 2: delta,
-                    -diameter / 2 + delta / 2: diameter / 2: delta]
+    y, x = np.mgrid[-diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta,
+                    -diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta]
     # This computes the distance of each grid point from the origin
     # and then we extract a masked array of points where r_sqr is less
     # than the distance of each grid point from the origin:

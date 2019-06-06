@@ -5,7 +5,7 @@ import quadrantdetector.sample_functions as qsf
 from scipy import integrate
 
 axis_size = 2000  # cells
-detector_size = 8  #  diameter in mm
+detector_size = 10  #  diameter in mm
 
 
 def intensity(y, x, sigma):
@@ -14,16 +14,13 @@ def intensity(y, x, sigma):
 
 
 def total_signal(delta, sigma, R):
-    """ Computes the theoretical intensity by sub-tracing off the signal lost due to the detector's
-    finite size and the gap between the quadrants.
+    """ Computes the theoretical intensity by integration; 
+        Assumes a centered beam.
     """
-    signal = integrate.dblquad(intensity, 0, R, 0,
+    signal = 4* integrate.dblquad(intensity, delta/2, np.sqrt(R**2 - 0.25*delta**2), delta/2,
                                lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
-    gap1 = integrate.dblquad(intensity, 0, delta/2,  0,
-                             lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
-    gap2 = integrate.dblquad(intensity, 0, delta/2, 0, delta/2,
-                             args=(sigma,))[0]
-    return max(4 * signal - 8 * gap1 - 4 * gap2, 0)
+    
+    return signal
 
 
 @pytest.fixture(scope='session')
@@ -33,7 +30,7 @@ def get_detectors():
     being gaps larger than the actual detector.
     """
     return [(gap, qd.create_detector(axis_size, detector_size, gap))
-            for gap in np.linspace(0, 1, 5)] \
+            for gap in np.linspace(0, 8, 9)] \
      #   + [(gap, qd.create_detector(axis_size, detector_size, gap))
      #      for gap in np.linspace(1, 11, 50)]
 
@@ -69,10 +66,11 @@ def test_laser(get_detectors):
     # Clearly, this only holds when the gap is small, otherwise the sum will
     # be even smaller.
     sigma_min = 0.01
-    sigma_max = 4.0
-    sigma_step = 0.1
+    sigma_max = 20
+    sigma_step = 0.5
     print(sigma_min, sigma_max, sigma_step)
     for sigma in np.arange(sigma_min,sigma_max, sigma_step):
+        print("sigma = ", sigma, "\n")
         for gap, detect in get_detectors:
             laser = qd.laser(detector_size, axis_size, 0, 0, sigma)
             sum_s = np.sum(laser * detect)
