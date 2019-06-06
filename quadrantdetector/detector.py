@@ -4,23 +4,26 @@ and mask it according to the specifications of our quandrant cell photodiode.
 """
 
 import numpy as np
+from numpy import power as np_pow
+from math import pow, sqrt
 import numpy.ma as ma
 from quadrantdetector.sample_functions import periodogram_psd
 
 
-def laser(grid, x_c, y_c, sigma, delta):
+def laser(grid, x_c, y_c, sigma):
     # We don't exist in Cartesian coords, so convert.
-    n = grid.shape[0]
-    x_c += n // 2
-    y_c += n // 2
+    x_c += grid.shape[0] / 2
+    y_c += grid.shape[1] / 2
     
-    scale_factor = np.sqrt(grid.max())
+    scale_factor = sqrt(grid.max())
+
+    laser_func = lambda x, y: (np.exp(-
+                                (np_pow(scale_factor * (x - x_c), 2) +
+                                 np_pow(scale_factor * (y - y_c), 2)) / (2 * pow(sigma, 2))
+                                 )
+                              ) / (2 * np.pi * pow(sigma, 2))
     
-    laser_func = lambda x, y: 1 / (2 * np.pi * sigma ** 2) \
-        * (np.exp(-((scale_factor * (x - x_c)) ** 2 +\
-                    (scale_factor * (y - y_c)) ** 2) / (2 * sigma ** 2)))
-    
-    return np.fromfunction(laser_func, (n, n), dtype=float) * grid
+    return np.fromfunction(laser_func, grid.shape, dtype=np.float32) * grid
 
 
 def n_critical(diameter, gap):
@@ -43,7 +46,7 @@ def n_critical(diameter, gap):
         The critical number of cells (an even number)
 
     """
-    critical = int(2 * diameter / gap)
+    critical = (2 * diameter) // gap
     if critical % 2 != 0:
         critical += 1
     return critical
@@ -106,8 +109,8 @@ def create_detector(n, diameter, gap, roundoff=1e-14, outer_circular_mask=True):
         n += 1
 
     delta = diameter / n
-    y, x = np.mgrid[-diameter / 2 + delta / 2: diameter / 2: delta,
-                    -diameter / 2 + delta / 2: diameter / 2: delta]
+    y, x = np.mgrid[-diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta,
+                    -diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta]
     # This computes the distance of each grid point from the origin
     # and then we extract a masked array of points where r_sqr is less
     # than the distance of each grid point from the origin:
@@ -118,47 +121,47 @@ def create_detector(n, diameter, gap, roundoff=1e-14, outer_circular_mask=True):
     # This portion takes care of masking out elements of the detector where
     # the gap exists. It returns an array of light intensity over the detector.
 
-    all_dead = (np.abs(x) + delta / 2 > gap / 2) \
-        & (np.abs(y) + delta / 2 > gap / 2)
+    all_dead = (np.abs(x) + delta / 2 >= gap / 2) & (np.abs(y) + delta / 2 >= gap / 2)
 
-    partial_dead_x_only = (np.abs(x) + delta / 2 > gap / 2) & \
-                          (np.abs(x) - delta / 2  < gap / 2) & \
-                          (np.abs(y) - delta / 2 > gap / 2)
-    partial_dead_y_only = (np.abs(y) + delta / 2 > gap / 2) & \
-                          (np.abs(y) - delta / 2 < gap / 2) & \
-                          (np.abs(x) - delta / 2 > gap / 2)
+    partial_dead_x_only = (np.abs(x) + delta / 2 - roundoff > gap / 2) & \
+                          (np.abs(x) - delta / 2 - roundoff < gap / 2) & \
+                          (np.abs(y) - delta / 2 - roundoff > gap / 2)
+    partial_dead_y_only = (np.abs(y) + delta / 2 - roundoff > gap / 2) & \
+                          (np.abs(y) - delta / 2 - roundoff < gap / 2) & \
+                          (np.abs(x) - delta / 2 - roundoff > gap / 2)
     partial_dead_x_or_y = (1 / delta) * (np.abs(x) + delta / 2 - gap / 2) * partial_dead_x_only + \
                           (1 / delta) * (np.abs(y) + delta / 2 - gap / 2) * partial_dead_y_only
 
     partial_dead_x_and_y = (1 / delta ** 2) * (np.abs(x) + delta / 2 - gap / 2) ** 2 * \
                            (
-                            (np.abs(x) + delta / 2 > gap / 2) &
-                            (np.abs(x) - delta / 2 < gap / 2) &
-                            (np.abs(y) + delta / 2 > gap / 2) &
-                            (np.abs(y) + delta / 2 > gap / 2) &
-                            (np.abs(y) - delta / 2 < gap / 2) &
-                            (np.abs(x) + delta / 2 > gap / 2)
+                            (np.abs(x) + delta / 2 - roundoff > gap / 2) &
+                            (np.abs(x) - delta / 2 - roundoff < gap / 2) &
+                            (np.abs(y) + delta / 2 - roundoff > gap / 2) &
+                            (np.abs(y) + delta / 2 - roundoff > gap / 2) &
+                            (np.abs(y) - delta / 2 - roundoff < gap / 2) &
+                            (np.abs(x) + delta / 2 - roundoff > gap / 2)
                            )
 
-    gap_mask = all_dead  # not strictly needed, but
-#    partial_mask = partial_dead_x_or_y + partial_dead_x_and_y
-#    partial_mask[partial_mask == 0] = 1
-    active_area = inside * gap_mask * delta ** 2
+    partial_mask = partial_dead_x_or_y + partial_dead_x_and_y
+    partial_mask[partial_mask == 0] = 1
+
+    active_area = all_dead * partial_mask * delta ** 2
+
+    if outer_circular_mask:
+        active_area *= inside
 
     return active_area
 
 
-def compute_signals(beam, area):
+def compute_signals(laser_beam):
     """
     This routine computes--for a given beam intensity--
     the sum, left-right, and top-bottom signals.
 
     Parameters
     ----------
-    beam : array_like
+    laser_beam : array_like
         Array of laser beam intensity
-    area : array_like
-        Array representing the detector.
 
     Returns
     -------
@@ -169,13 +172,12 @@ def compute_signals(beam, area):
     t_b : float
         Top minus bottom quadrants
     """
-    signal = beam * area
-    x_shape, y_shape = signal.shape
-    right = np.sum(signal[0:x_shape, int(y_shape / 2):y_shape])
-    left = np.sum(signal[0:x_shape, 0:int(y_shape / 2)])
-    bottom = np.sum(signal[0:int(x_shape / 2), 0:y_shape])
-    top = np.sum(signal[int(x_shape / 2):x_shape, 0:y_shape])
-    return np.sum(signal), left - right, top - bottom
+    x_shape, y_shape = laser_beam.shape
+    right = np.sum(laser_beam[0 : x_shape, y_shape // 2 : y_shape])
+    left = np.sum(laser_beam[0 : x_shape, 0 : y_shape // 2])
+    bottom = np.sum(laser_beam[0 : x_shape // 2, 0 : y_shape])
+    top = np.sum(laser_beam[x_shape // 2 : x_shape, 0 : y_shape])
+    return np.sum(laser_beam), left - right, top - bottom
 
 
 def signal_over_path(n, diameter, gap, x_max, sigma, track,
