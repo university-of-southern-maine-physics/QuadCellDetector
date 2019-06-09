@@ -19,7 +19,16 @@ To see a complete demonstration of the library features, see the [DetectorDemo][
 
 [0]: https://github.com/university-of-southern-maine-physics/QuadCellDetector/blob/master/demos/DetectorDemo.ipynb
 
+### How To Get Help (or Help Us)
+
+If you found a bug, have a question, or otherwise need to contact us, please [read this][0].
+
+If you want to help us in the development process, or have an idea, [read this.][1]
+
 ## Contributors
 
 + [Paul Nakroshis](https://github.com/paulnakroshis)
 + [Ben Montgomery](https://github.com/Nyctanthous)
+
+[0]: https://github.com/university-of-southern-maine-physics/QuadCellDetector/blob/master/CONTRIBUTING.md#if-you-found-a-bug
+[1]: https://github.com/university-of-southern-maine-physics/QuadCellDetector/blob/master/CONTRIBUTING.md#if-you-want-to-contribute-code
