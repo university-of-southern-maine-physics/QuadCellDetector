@@ -62,20 +62,17 @@ def test_laser(get_detectors):
     # In every laser on a detector, the sum of every point should be
     # approximately 1 when sigma << detector diameter.
     # Clearly, this only holds when the gap is small, otherwise the sum will
-    # be even smaller.
+    # be even smaller. This test creates a gaussian beam centered on the detector 
     sigma_min = 0.01
     sigma_max = 20
     sigma_step = 0.5
-    print(sigma_min, sigma_max, sigma_step)
     for sigma in np.arange(sigma_min,sigma_max, sigma_step):
         print("sigma = ", sigma, "\n")
         for gap, detect in get_detectors:
             laser = qd.laser(detector_size, axis_size, 0, 0, sigma)
             sum_s = np.sum(laser * detect)
 
-            # Note that when sum_s is increasingly large, we approach the expected value.
-            # When it decreases, we fall away from our expected value.
-            print(sum_s,',', sum_s - total_signal(gap, sigma, detector_size / 2))
+            assert sum_s - total_signal(gap, sigma, detector_size / 2)) < 0.0001
 
 
 def test_compute_signals(get_detectors):
