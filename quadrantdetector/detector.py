@@ -263,7 +263,7 @@ def signal_over_path(n, diameter, gap, x_max, sigma, track,
 
 
 def signal_over_time(n, diameter, gap, amplitude, period, t_max, sigma, track,
-                     n_samples, amplitude, roundoff=1e-14):
+                     n_samples, roundoff=1e-14):
     """
     This routine executes the compute_signals function multiple times over
     a user specified TIME interval and returns the path and the expected
