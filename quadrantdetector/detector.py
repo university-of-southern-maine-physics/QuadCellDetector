@@ -262,7 +262,7 @@ def signal_over_path(n, diameter, gap, x_max, sigma, track,
     return (xp, *zip(*all_results))
 
 
-def signal_over_time(n, diameter, gap, t_max, sigma, track,
+def signal_over_time(n, diameter, gap, amplitude, period, t_max, sigma, track,
                      n_samples, amplitude, roundoff=1e-14):
     """
     This routine executes the compute_signals function multiple times over
@@ -284,6 +284,10 @@ def signal_over_time(n, diameter, gap, t_max, sigma, track,
         Diameter of detector in mm
     gap : float
         Gap width between quadrants of detector in mm
+    amplitude : float
+        Amplitude of sinusoidal motion
+    period : float
+        Period of sinusoidal signal in seconds
     t_max : float
         Maximum time for simulation in seconds
     sigma : float
@@ -317,9 +321,6 @@ def signal_over_time(n, diameter, gap, t_max, sigma, track,
     its current torsion fiber (40 seconds)
     """
 
-    # approx. period of our calibration ring pendulum
-    period = 40.00
-
     # create time array
     tp = np.linspace(0, t_max, n_samples)
 
@@ -330,7 +331,7 @@ def signal_over_time(n, diameter, gap, t_max, sigma, track,
     area = create_detector(n, diameter, gap,
                            roundoff=roundoff)
 
-    all_sig = [compute_signals(laser(area, x_val, y_val, sigma), area)
+    all_sig = [compute_signals(laser(diameter, n, x_val, y_val, sigma), area)
                for x_val, y_val in np.nditer([xp, yp])]
 
     return (tp, xp, *zip(*all_sig))
