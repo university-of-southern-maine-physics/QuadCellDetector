@@ -72,7 +72,7 @@ def test_laser(get_detectors):
             laser = qd.laser(detector_size, axis_size, 0, 0, sigma)
             sum_s = np.sum(laser * detect)
 
-            assert sum_s - total_signal(gap, sigma, detector_size / 2)) < 0.0001
+            assert sum_s - total_signal(gap, sigma, detector_size / 2) < 0.0001
 
 
 def test_compute_signals(get_detectors):
