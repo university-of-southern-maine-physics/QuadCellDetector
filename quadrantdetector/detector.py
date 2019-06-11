@@ -102,7 +102,9 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
     Returns
     -------
     active_area : array_like
-        2d array with effective area of each active cell
+        2d array with effective area of each cell; if the cell is dead,
+        it's area will be zero. Most cells will have and area of (diameter/n)**2,
+        but some cells which straddle the gap will have a fraction of this area. 
 
     Note
     ----
