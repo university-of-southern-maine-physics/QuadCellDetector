@@ -5,12 +5,12 @@ import quadrantdetector.sample_functions as qsf
 from scipy import integrate
 
 axis_size = 1500  # cells
-detector_diameter = 16  #  diameter in mm
+detector_diameter = 10  #  diameter in mm
 
 
 def intensity(y, x, sigma):
     """ Computes the intensity of a Gaussian beam centered on the origin at the position (x,y)"""
-    return (1/(2*np.pi*sigma**2)) * np.exp(-(x**2 + y**2)/(2*sigma**2))
+    return (1 / (2 * np.pi * sigma**2)) * np.exp(-(x**2 + y**2) / (2 * sigma**2))
 
 
 def total_signal(delta, sigma, R):
@@ -32,7 +32,7 @@ def get_detectors():
     Returns a list of 100 detectors with increasingly large gaps, the last
     being gaps larger than the actual detector.
     """
-    return [(gap, qd.create_detector(axis_size, detector_diameter, gap, outer_circular_mask=True))
+    return [(gap, qd.create_detector(axis_size, detector_diameter, gap))
             for gap in np.linspace(0, 1, 5)] \
         + [(gap, qd.create_detector(axis_size, detector_diameter, gap))
            for gap in np.linspace(1, 11, 50)]
@@ -77,7 +77,8 @@ def test_laser(get_detectors):
             # When it decreases, we fall away from our expected value.
 
             if gap < np.sqrt(2) * (detector_diameter / 2):
-                assert sum_s - total_signal(gap, sigma, detector_diameter / 2) < 1e-2
+                # Pick some reasonable bound of precision and make sure we meet it
+                assert sum_s - total_signal(gap, sigma, detector_diameter / 2) < 1e-4
 
 
 def test_compute_signals(get_detectors):

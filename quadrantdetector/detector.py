@@ -8,6 +8,7 @@ from numpy import power as np_pow
 from math import pow, sqrt
 import numpy.ma as ma
 from quadrantdetector.sample_functions import periodogram_psd
+import warnings
 
 
 def laser(grid, x_c, y_c, sigma):
@@ -37,6 +38,10 @@ def laser(grid, x_c, y_c, sigma):
     # value is the length of the sides of the cell.
     scale_factor = sqrt(grid.max())
 
+    if not scale_factor:
+        warnings.warn("There are no values the represent the cell's unit area. No laser will be inscribed.")
+        return
+
     # Now, we convert the Cartesian coords to be scaled to correspond to the
     # right cells
     x_c /= scale_factor
@@ -55,7 +60,7 @@ def laser(grid, x_c, y_c, sigma):
                               ) / (2 * np.pi * pow(sigma, 2))
     
     # Use the function above to create a new grid with the laser inscribed on the detector.
-    return np.fromfunction(laser_func, grid.shape, dtype=np.float32) * grid
+    return np.fromfunction(laser_func, grid.shape, dtype=np.float32)
 
 
 def n_critical(diameter, gap):
@@ -153,7 +158,8 @@ def create_detector(n, diameter, gap, roundoff=1e-14, outer_circular_mask=True):
     # This portion takes care of masking out elements of the detector where
     # the gap exists. It returns an array of light intensity over the detector.
 
-    all_dead = (np.abs(x) + delta / 2 >= gap / 2) & (np.abs(y) + delta / 2 >= gap / 2)
+    all_dead = (np.abs(x) + delta / 2 - roundoff > gap / 2) \
+        & (np.abs(y) + delta / 2 - roundoff > gap / 2)
 
     partial_dead_x_only = (np.abs(x) + delta / 2 - roundoff > gap / 2) & \
                           (np.abs(x) - delta / 2 - roundoff < gap / 2) & \
@@ -185,7 +191,7 @@ def create_detector(n, diameter, gap, roundoff=1e-14, outer_circular_mask=True):
     return active_area
 
 
-def compute_signals(laser_beam):
+def compute_signals(laser_beam, detector):
     """
     This routine computes--for a given beam intensity--
     the sum, left-right, and top-bottom signals.
@@ -194,6 +200,9 @@ def compute_signals(laser_beam):
     ----------
     laser_beam : array_like
         Array of laser beam intensity
+    detector : array_like
+        Array representing the detector.
+
 
     Returns
     -------
@@ -204,12 +213,13 @@ def compute_signals(laser_beam):
     t_b : float
         Top minus bottom quadrants
     """
-    x_shape, y_shape = laser_beam.shape
-    right = np.sum(laser_beam[0 : x_shape, y_shape // 2 : y_shape])
-    left = np.sum(laser_beam[0 : x_shape, 0 : y_shape // 2])
-    bottom = np.sum(laser_beam[0 : x_shape // 2, 0 : y_shape])
-    top = np.sum(laser_beam[x_shape // 2 : x_shape, 0 : y_shape])
-    return np.sum(laser_beam), left - right, top - bottom
+    joined = detector * laser_beam
+    x_shape, y_shape = joined.shape
+    right = np.sum(joined[0 : x_shape, y_shape // 2 : y_shape])
+    left = np.sum(joined[0 : x_shape, 0 : y_shape // 2])
+    bottom = np.sum(joined[0 : x_shape // 2, 0 : y_shape])
+    top = np.sum(joined[x_shape // 2 : x_shape, 0 : y_shape])
+    return np.sum(joined), left - right, top - bottom
 
 
 def signal_over_path(n, diameter, gap, x_max, sigma, track,
