@@ -75,7 +75,7 @@ def test_laser(get_detectors):
             laser = qd.laser(detector_size, axis_size, 0, 0, sigma)
             sum_s = np.sum(laser * detect)
             # now test so see that this is approximately equal to the theoretical value
-            assert m.abs(sum_s - total_signal(gap, sigma, detector_size / 2)) < 0.00001
+            assert m.fabs(sum_s - total_signal(gap, sigma, detector_size / 2)) < 0.00001
 
 
 def test_compute_signals(get_detectors):
