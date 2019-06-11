@@ -139,7 +139,7 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
      
     # The maximum possible gap size is sqrt(2)*Radius of detector;
     # raise an exception if this condition is violated:   
-     if gap >= np.sqrt(2)*diameter/2:
+    if gap >= np.sqrt(2)*diameter/2:
         raise Exception('The gap is too large!')
         
         
