@@ -67,7 +67,6 @@ def test_laser(get_detectors):
     sigma_max = 20
     sigma_step = 0.5
     for sigma in np.arange(sigma_min,sigma_max, sigma_step):
-        print("sigma = ", sigma, "\n")
         for gap, detect in get_detectors:
             laser = qd.laser(detector_size, axis_size, 0, 0, sigma)
             sum_s = np.sum(laser * detect)
