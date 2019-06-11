@@ -133,8 +133,14 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
 
     # If odd, round up.
     if n % 2:
-        n += 1
-
+        n = n + 1
+     
+    # The maximum possible gap size is sqrt(2)*Radius of detector;
+    # raise an exception if this condition is violated:   
+     if gap >= np.sqrt(2)*diameter/2:
+        raise Exception('The gap is too large!')
+        
+        
     delta = diameter / n
     y, x = np.mgrid[-diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta,
                     -diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta]
