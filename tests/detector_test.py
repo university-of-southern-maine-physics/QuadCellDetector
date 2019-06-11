@@ -4,9 +4,9 @@ import quadrantdetector.detector as qd
 import quadrantdetector.sample_functions as qsf
 from scipy import integrate
 
-axis_size = 2000  # cells
+axis_size = 2000  # cells in simulation
 detector_size = 10  #  diameter in mm
-
+max_gap = np.sqrt(2)*detector_size/2  # this is the largest possible gap size
 
 def intensity(y, x, sigma):
     """ Computes the intensity of a Gaussian beam centered on the origin at the position (x,y)"""
@@ -26,13 +26,11 @@ def total_signal(delta, sigma, R):
 @pytest.fixture(scope='session')
 def get_detectors():
     """
-    Returns a list of 100 detectors with increasingly large gaps, the last
-    being gaps larger than the actual detector.
+    Returns a list of 20 detectors with increasingly large gaps, the last
+    being a gap of size max_gap = np.sqrt(2)*detector_size/2.
     """
     return [(gap, qd.create_detector(axis_size, detector_size, gap))
-            for gap in np.linspace(0, 8, 9)] \
-     #   + [(gap, qd.create_detector(axis_size, detector_size, gap))
-     #      for gap in np.linspace(1, 11, 50)]
+            for gap in np.linspace(0, max_gap, 20)] 
 
 
 def test_detector_init(get_detectors):
