@@ -30,7 +30,7 @@ def get_detectors():
     being a gap of size max_gap = np.sqrt(2)*detector_size/2.
     """
     return [(gap, qd.create_detector(axis_size, detector_size, gap))
-            for gap in np.linspace(0, max_gap, 20)] 
+            for gap in np.linspace(0, 0.99*max_gap, 20)] 
 
 
 def test_detector_init(get_detectors):
