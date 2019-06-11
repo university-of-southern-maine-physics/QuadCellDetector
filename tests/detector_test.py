@@ -3,6 +3,7 @@ import numpy as np
 import quadrantdetector.detector as qd
 import quadrantdetector.sample_functions as qsf
 from scipy import integrate
+import math as m
 
 axis_size = 2000  # cells in simulation
 detector_size = 10  #  diameter in mm
@@ -58,11 +59,14 @@ def test_detector_init(get_detectors):
 
 
 def test_laser(get_detectors):
-    # Test a laser on an empty grid.
-    # In every laser on a detector, the sum of every point should be
-    # approximately 1 when sigma << detector diameter.
-    # Clearly, this only holds when the gap is small, otherwise the sum will
-    # be even smaller. This test creates a gaussian beam centered on the detector 
+    # this test creates a gaussian beam centered on the detector 
+    # and looks at the sum signal as produced by our computational model
+    # of the detector and compares it to the theoretical model for the same beam.
+    # The theoretical integral is relatively easy to compute in this case, but is 
+    # not so easily computed when the beam is not centered. 
+    #
+    # start by creating a ranged of beam radii, and then compute the sum signal
+    # by our computational model:
     sigma_min = 0.01
     sigma_max = 20
     sigma_step = 0.5
@@ -70,8 +74,8 @@ def test_laser(get_detectors):
         for gap, detect in get_detectors:
             laser = qd.laser(detector_size, axis_size, 0, 0, sigma)
             sum_s = np.sum(laser * detect)
-
-            assert sum_s - total_signal(gap, sigma, detector_size / 2) < 0.0001
+            # now test so see that this is approximately equal to the theoretical value
+            assert m.abs(sum_s - total_signal(gap, sigma, detector_size / 2)) < 0.00001
 
 
 def test_compute_signals(get_detectors):
