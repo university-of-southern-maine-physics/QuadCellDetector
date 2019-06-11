@@ -39,8 +39,7 @@ def laser(grid, x_c, y_c, sigma):
     scale_factor = sqrt(grid.max())
 
     if not scale_factor:
-        warnings.warn("There are no values the represent the cell's unit area. No laser will be inscribed.")
-        return
+        raise Warning("There are no values the represent the cell's unit area. No laser will be inscribed.")
 
     # Now, we convert the Cartesian coords to be scaled to correspond to the
     # right cells
@@ -49,11 +48,12 @@ def laser(grid, x_c, y_c, sigma):
 
     # Our array is not Cartesian; (0,0) refers to the upper-left corner.
     # Rectify this by adding an offset.
-    x_c += grid.shape[0] / 2
-    y_c += grid.shape[1] / 2
+    x_c += grid.shape[0] / 2 - 0.5
+    y_c += grid.shape[1] / 2 - 0.5
+    
 
     # Apply the Gaussian function for every coordinate pair (x, y) 
-    laser_func = lambda x, y: (np.exp(-
+    laser_func = lambda y, x: (np.exp(-
                                 (np_pow(scale_factor * (x - x_c), 2) +
                                  np_pow(scale_factor * (y - y_c), 2)) / (2 * pow(sigma, 2))
                                  )
@@ -262,9 +262,9 @@ def signal_over_path(n, diameter, gap, x_max, sigma, track,
     """
     xp = np.linspace(-x_max, x_max, n_samples)  # create x coordinate array
     area = create_detector(n, diameter, gap, roundoff)
-    all_results = [compute_signals(laser(area, diameter / n, x_val,
-                                   track(x_val, diameter), sigma), area)
-                   for x_val in np.nditer(xp)]
+    all_results = [compute_signals(laser(area, x_val, track(x_val, diameter), sigma),
+                                   area)
+                   for x_val in xp]
     return (xp, *zip(*all_results))
 
 

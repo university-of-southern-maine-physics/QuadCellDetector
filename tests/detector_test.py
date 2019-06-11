@@ -70,23 +70,35 @@ def test_laser(get_detectors):
     # be even smaller.
     for sigma in np.arange(0.01, 7.02, 0.25):
         for gap, detect in get_detectors:
-            laser = qd.laser(detect, 0, 0, sigma)
-            sum_s = np.sum(laser)
+            try:
+                laser = qd.laser(detect, 0, 0, sigma)
+                laser_on_detector = laser * detect
+                sum_s = np.sum(laser_on_detector)
 
-            # Note that when sum_s is increasingly large, we approach the expected value.
-            # When it decreases, we fall away from our expected value.
+                # Note that when sum_s is increasingly large, we approach the expected value.
+                # When it decreases, we fall away from our expected value.
 
-            if gap < np.sqrt(2) * (detector_diameter / 2):
-                # Pick some reasonable bound of precision and make sure we meet it
-                assert sum_s - total_signal(gap, sigma, detector_diameter / 2) < 1e-4
+                if gap < np.sqrt(2) * (detector_diameter / 2):
+                    # Pick some reasonable bound of precision and make sure we meet it
+                    assert sum_s - total_signal(gap, sigma, detector_diameter / 2) < 1e-4
+            except Warning as warn:
+                # We should only warn when there is no values at all;
+                # in other words, when the gap is bigger than the detector.
+                assert gap >= np.sqrt(2) * (detector_diameter / 2)
+
 
 
 def test_compute_signals(get_detectors):
     for gap, detect in get_detectors:
         # get_detectors created a sequence of detectors centered, so all
         # signals should be symmetric.
-        sum_signal, lr_signal, tb_signal = qd.compute_signals(
-            qd.laser(detect, detector_diameter / axis_size, 0, 0, 2.0), detect)
+        try:
+            sum_signal, lr_signal, tb_signal = qd.compute_signals(
+                qd.laser(detect, 0, 0, 2.0), detect)
+        except Warning as warn:
+            # We should only warn when there is no values at all;
+            # in other words, when the gap is bigger than the detector.
+            assert gap >= np.sqrt(2) * (detector_diameter / 2)
         assert sum_signal >= lr_signal and sum_signal >= tb_signal
 
 
@@ -100,6 +112,7 @@ def test_signal_over_path():
 
         for curr_x, curr_sum, curr_lr, curr_tb in zip(x_positions, sum_signals,
                                                       lr_signals, tb_signals):
+
             # In all cases...
             assert (curr_sum > curr_lr or abs(curr_sum - curr_lr) < 1e-6) \
                and (curr_sum >= curr_tb or abs(curr_sum - curr_tb) < 1e-6)
