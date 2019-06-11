@@ -11,18 +11,50 @@ from quadrantdetector.sample_functions import periodogram_psd
 
 
 def laser(grid, x_c, y_c, sigma):
+    """
+    This function produces a gaussian beam, inscribed on the detector.
+
+    Parameters
+    ----------
+    grid : array_like
+        A 2D array representing the dector this laser shines on.
+    x_c, y_c : float
+        x and y Cartesian coordinates of the center of the laser spot
+        (not necessarily on the detector!)
+    sigma : float
+        the standard deviation for the gaussian beam; FWHM ~ 2.355σ
+
+    Returns
+    -------
+    array_like
+        NumPy array of normalized beam intensity values over the detector array
+    """
     # We don't exist in Cartesian coords, so convert.
-    x_c += grid.shape[0] / 2
-    y_c += grid.shape[1] / 2
-    
+
+    # Our grid is set up so that the values in each cell relects the physical
+    # area (mm^2) that the cell occupies. If we take the max, these are the
+    # cells that are not masked out at all. If we take the sqrt of this, this
+    # value is the length of the sides of the cell.
     scale_factor = sqrt(grid.max())
 
+    # Now, we convert the Cartesian coords to be scaled to correspond to the
+    # right cells
+    x_c /= scale_factor
+    y_c /= scale_factor
+
+    # Our array is not Cartesian; (0,0) refers to the upper-left corner.
+    # Rectify this by adding an offset.
+    x_c += grid.shape[0] / 2
+    y_c += grid.shape[1] / 2
+
+    # Apply the Gaussian function for every coordinate pair (x, y) 
     laser_func = lambda x, y: (np.exp(-
                                 (np_pow(scale_factor * (x - x_c), 2) +
                                  np_pow(scale_factor * (y - y_c), 2)) / (2 * pow(sigma, 2))
                                  )
                               ) / (2 * np.pi * pow(sigma, 2))
     
+    # Use the function above to create a new grid with the laser inscribed on the detector.
     return np.fromfunction(laser_func, grid.shape, dtype=np.float32) * grid
 
 

@@ -4,8 +4,8 @@ import quadrantdetector.detector as qd
 import quadrantdetector.sample_functions as qsf
 from scipy import integrate
 
-axis_size = 1000  # cells
-detector_size = 16  #  diameter in mm
+axis_size = 1500  # cells
+detector_diameter = 16  #  diameter in mm
 
 
 def intensity(y, x, sigma):
@@ -17,13 +17,13 @@ def total_signal(delta, sigma, R):
     """ Computes the theoretical intensity by sub-tracing off the signal lost due to the detector's
     finite size and the gap between the quadrants.
     """
-    signal = integrate.dblquad(intensity, 0, R, 0,
-                               lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
-    gap1 = integrate.dblquad(intensity, 0, delta/2,  0,
-                             lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
-    gap2 = integrate.dblquad(intensity, 0, delta/2, 0, delta/2,
-                             args=(sigma,))[0]
-    return max(4 * signal - 8 * gap1 - 4 * gap2, 0)
+    
+    if delta >= np.sqrt(2) * R:
+        raise Warning("Results at this point are non-physical: Gap now only exists off the detector.")
+    
+    return 4 * integrate.dblquad(intensity,
+                             delta / 2, np.sqrt(R**2 - (delta / 2)**2),
+                             delta / 2, lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
 
 
 @pytest.fixture(scope='session')
@@ -32,17 +32,17 @@ def get_detectors():
     Returns a list of 100 detectors with increasingly large gaps, the last
     being gaps larger than the actual detector.
     """
-    return [(gap, qd.create_detector(axis_size, detector_size, gap, outer_circular_mask=True))
+    return [(gap, qd.create_detector(axis_size, detector_diameter, gap, outer_circular_mask=True))
             for gap in np.linspace(0, 1, 5)] \
-     #   + [(gap, qd.create_detector(axis_size, detector_size, gap))
-     #      for gap in np.linspace(1, 11, 50)]
+        + [(gap, qd.create_detector(axis_size, detector_diameter, gap))
+           for gap in np.linspace(1, 11, 50)]
 
 
 def test_detector_init(get_detectors):
     for gap, detect in get_detectors:
         assert detect.shape == (axis_size, axis_size)
 
-        density = axis_size / detector_size
+        density = axis_size / detector_diameter
 
         midpoint = int(axis_size / 2)
         # Positive value describing the number of zero-only cells in the width
@@ -75,7 +75,9 @@ def test_laser(get_detectors):
 
             # Note that when sum_s is increasingly large, we approach the expected value.
             # When it decreases, we fall away from our expected value.
-            print(sum_s,',', gap, ',', sum_s - total_signal(gap, sigma, detector_size / 2))
+
+            if gap < np.sqrt(2) * (detector_diameter / 2):
+                assert sum_s - total_signal(gap, sigma, detector_diameter / 2) < 1e-2
 
 
 def test_compute_signals(get_detectors):
@@ -83,7 +85,7 @@ def test_compute_signals(get_detectors):
         # get_detectors created a sequence of detectors centered, so all
         # signals should be symmetric.
         sum_signal, lr_signal, tb_signal = qd.compute_signals(
-            qd.laser(detect, detector_size / axis_size, 0, 0, 2.0), detect)
+            qd.laser(detect, detector_diameter / axis_size, 0, 0, 2.0), detect)
         assert sum_signal >= lr_signal and sum_signal >= tb_signal
 
 
@@ -93,7 +95,7 @@ def test_signal_over_path():
         # Run a track with a detector of diameter 10mm, from -20mm to +20mm
         # WLOG, sigma = 1, and we take 20 points along the track.
         x_positions, sum_signals, lr_signals, tb_signals = \
-            qd.signal_over_path(axis_size, detector_size, 0, 20, 1, track_func, 40)
+            qd.signal_over_path(axis_size, detector_diameter, 0, 20, 1, track_func, 40)
 
         for curr_x, curr_sum, curr_lr, curr_tb in zip(x_positions, sum_signals,
                                                       lr_signals, tb_signals):
@@ -102,7 +104,7 @@ def test_signal_over_path():
                and (curr_sum >= curr_tb or abs(curr_sum - curr_tb) < 1e-6)
 
             # Check sums based on position.
-            if curr_x >= -detector_size and curr_x <= detector_size:
+            if curr_x >= -detector_diameter and curr_x <= detector_diameter:
                 assert curr_sum > 0
             else:
                 assert curr_sum < 0.1
