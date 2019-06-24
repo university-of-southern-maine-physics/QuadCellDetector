@@ -126,6 +126,20 @@ def test_signal_over_path():
 
 
 def test_signal_over_time():
+    # Temp variables while this function gets built
     gap = 0
+    amplitude = 0
+    period = 0
+    max_time = 0
+    sigma = 1
+    num_samples = 40
+
     for track_func in [qsf.center_path, qsf.half_path, qsf.quarter_path]:
-        pass
+        time_vals, x_vals, sum_s, lr_s, tb_s = qd.signal_over_time(
+            detector_n, detector_diameter, gap,
+            amplitude, period, max_time, sigma,
+            track_func, num_samples)
+
+        # Basic dimentionality and type check
+        assert time_vals.shape == x_vals.shape == sum_s.shape == lr_s.shape\
+            == tb_s.shape

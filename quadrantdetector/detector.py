@@ -385,4 +385,4 @@ def signal_over_time(n: int, diameter: float, gap: float, amplitude: float,
     all_sig = [compute_signals(laser(diameter, n, x_val, y_val, sigma), area)
                for x_val, y_val in np.nditer([xp, yp])]
 
-    return (tp, xp, *zip(*all_sig))
+    return (tp, xp, *np.transpose(all_sig))
