@@ -34,25 +34,29 @@ def laser(diameter, n, x_c, y_c, sigma):
     array_like
         NumPy array of normalized beam intensity values over the detector array
     """
-    delta = diameter/n
-    y, x = np.mgrid[-diameter/2 + delta/2: diameter/2 + delta/2: delta, -diameter/2 + delta/2: diameter/2 + delta/2: delta]
+    delta = diameter / n
+    y, x = np.mgrid[-diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta,
+                    -diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta]
     return 1 / (2 * np.pi * sigma ** 2) \
         * (np.exp(-((x - x_c) ** 2 + (y - y_c) ** 2) / (2 * sigma ** 2)))
-        
+
 
 def intensity(y, x, sigma):
-    """ Computes the intensity of a Gaussian beam centered on the origin at the position (x,y)"""
+    """
+    Computes the intensity of a Gaussian beam centered on the origin at
+    the position (x,y)
+    """
     return (1/(2*np.pi*sigma**2)) * np.exp(-(x**2 + y**2)/(2*sigma**2))
 
 
-        
 def total_signal(delta, sigma, R):
-    """ Computes the theoretical sum signal by numerical integration; 
+    """ Computes the theoretical sum signal by numerical integration;
         Assumes a centered beam.
     """
-    signal = 4* integrate.dblquad(intensity, delta/2, np.sqrt(R**2 - 0.25*delta**2), delta/2,
-                               lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
-    return signal
+    return 4 * integrate.dblquad(intensity,
+                                 delta / 2, np.sqrt(R**2 - 0.25*delta**2),
+                                 delta / 2, lambda x: np.sqrt(R**2 - x**2),
+                                 args=(sigma,))[0]
 
 
 def n_critical(diameter, gap):
@@ -136,20 +140,19 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
     # If odd, round up.
     if n % 2:
         n = n + 1
-     
+
     # The maximum possible gap size is sqrt(2)*Radius of detector;
-    # raise an exception if this condition is violated:   
-    if gap >= np.sqrt(2)*diameter/2:
+    # raise an exception if this condition is violated:
+    if gap >= np.sqrt(2) * diameter/2:
         raise Exception('The gap is too large!')
-        
-        
+
     delta = diameter / n
     y, x = np.mgrid[-diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta,
                     -diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta]
     # This computes the distance of each grid point from the origin
     # and then we extract a masked array of points where r_sqr is less
     # than the distance of each grid point from the origin:
-    r_sqr = x ** 2 + y ** 2 
+    r_sqr = x ** 2 + y ** 2
 
     inside = ma.getmask(ma.masked_where(r_sqr <= (diameter / 2) ** 2, x))
 
@@ -256,9 +259,9 @@ def signal_over_path(n, diameter, gap, x_max, sigma, track,
     """
     xp = np.linspace(-x_max, x_max, n_samples)  # create x coordinate array
     area = create_detector(n, diameter, gap, roundoff)
-    all_results = [compute_signals(laser(area, diameter / n, x_val,
+    all_results = [compute_signals(laser(diameter, n, x_val,
                                    track(x_val, diameter), sigma), area)
-                   for x_val in np.nditer(xp)]
+                   for x_val in xp]
     return (xp, *zip(*all_results))
 
 
@@ -335,37 +338,3 @@ def signal_over_time(n, diameter, gap, amplitude, period, t_max, sigma, track,
                for x_val, y_val in np.nditer([xp, yp])]
 
     return (tp, xp, *zip(*all_sig))
-
-
-def power_spectrum(n, d0, gap, tmax, σ, track_func, n_samples, amplitude):
-    """
-    This code uses the functions in physics.py to build a detector and
-    simulate the motion of our laser on some path across the detector.
-
-    """
-    #   Physical Paramaters for our detector system:
-    #
-    #    d0  # diameter of photocell in mm
-    #    gap   # gap between the 4 quadrants; also in mm
-    #    σ   # measured gaussian radius of our laser beam
-    #
-    #   Simulation Parameters:
-    #
-    #    n           # choose a reasonable minimum n value
-    #    ϵ           # fudge factor due to roundoff error in case where δ = 2Δ
-    delta = d0 / n  # grid size for simulation
-    #    t_max       # maximum time to run for
-    #    n_samples   # number of samples for path in time
-    #    track_func  # path of laser across detector
-    #    amplitude   # amplitude of oscillation in mm
-    print("Building: ", n, "by", n, " Array")
-    print("Pixel Size: Δ = %.3f " % delta)
-
-    #   Now build the detector and return the detector response for a gaussian
-    #   beam centered at (xc, yc) illuminating the detector.
-
-    tp, xp, s, lr, tb = signal_over_time(n, d0, gap, t_max, sigma,
-                                         track_func, n_samples, amplitude)
-    f_lr, psd_lr = periodogram_psd(lr, n_samples / t_max)
-    f_tb, psd_tb = periodogram_psd(tb, n_samples / t_max)
-    return tp, xp, s, lr, tb, f_lr, psd_lr, f_tb, psd_tb
