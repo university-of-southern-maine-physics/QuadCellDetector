@@ -124,3 +124,8 @@ def test_signal_over_path():
                     # Should be somewhat biased towards the top
                     assert 1 > curr_tb > 0.5
 
+
+def test_signal_over_time():
+    gap = 0
+    for track_func in [qsf.center_path, qsf.half_path, qsf.quarter_path]:
+        pass
