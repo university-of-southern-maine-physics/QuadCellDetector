@@ -368,9 +368,7 @@ def signal_over_time(n: int, diameter: float, gap: float, amplitude: float,
     Notes
     -----
     1. the track function specifies the y-coordinate of the spot
-    center as it tracks across the detector.
-    2. The period of the motion is set to mimic our pendulum with
-    its current torsion fiber (40 seconds)
+    center as it tracks across the detector. 
     """
 
     # create time array
