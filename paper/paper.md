@@ -1,7 +1,7 @@
 ---
 title: 'Quad Cell Detector: Simulating the response of a quadrant cell 
 photodiode to the passage of a gaussian beam'  
-tags:   
+tags:  
   - experimental  
   - photodiode
   - physics
@@ -20,15 +20,11 @@ authors:
     orcid: 0000-0000-0000-0000  
 	affiliation: University of Southern Maine  
 date: 9 April 2019  
-bibliography: paper.bib  
----
+## bibliography: paper.bib
 
 # Summary
 
-`QuadCellDetector` is a python package that allows one to simulate the response
-of a quadrant cell photodiode to the passage of a Gaussian laser beam across 
-its surface. Quadrant cell photodiodes (as the name implies) are silicon 
-photodiodes split into four quadrants (with a small gap separating each 
+`QuadCellDetector` is a python package that allows one to simulate the response of a quadrant cell photodiode to the passage of a Gaussian laser beam across its surface. Quadrant cell photodiodes (as the name implies) are silicon photodiodes split into four quadrants (with a small gap separating each 
 quadrant). The detector geomety parameters are shown in the figure below (with numerical
 values that match our detector):<br>
 
@@ -43,8 +39,8 @@ voltage signal which is proportional to the total luminous energy incident on
 the quadrant. Quadrant cell detectors return three different signals: 
 
 1.  The sum of all four quadrants,
-2.	The sum of the two top quadrants minus the two bottom quadrants,
-3. 	The sum of the two left quadrants minus the two right quadrants.
+2. The sum of the two top quadrants minus the two bottom quadrants,
+	The sum of the two left quadrants minus the two right quadrants.
 
 and in this way, one can tell when light is on the detector (sum signal 
 non-zero) and whether it is centered (sum at maximum, top - bottom = 0 and 
@@ -54,13 +50,13 @@ be accurately ascertained (assuming one knows the size of the Gaussian beam).
 
 The goals of this package are to allow the user to  
 1.  Simulate the response of a given circular photodiode to the passage of a 
-    Gaussian beam that traverses the detector in *any* user specified path.  
+	Gaussian beam that traverses the detector in *any* user specified path.  
 2.  Use this simulation to match the output of the detector when an actual beam
-    is manually swept across the detector; since the only adjustable parameter 
-    in this simulation is the width of the Gaussian beam, is is a simple matter
-    to vary this parameter until one obtains a match to experimental data.  
+	is manually swept across the detector; since the only adjustable parameter 
+	in this simulation is the width of the Gaussian beam, is is a simple matter
+	to vary this parameter until one obtains a match to experimental data.  
 3.  Use the simulation to be able to study the frequency content of a given 
-    spot's path across the detector.   
+	spot's path across the detector.   
 
 It should be noted that theoretical papers on this matter (see for instance 
 [@QPD-Sensitivity] and [@Zucker]) do not attempt to

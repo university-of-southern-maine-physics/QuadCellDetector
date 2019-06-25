@@ -22,7 +22,8 @@ def laser(diameter, n, x_c, y_c, sigma):
     diameter : float
         Diameter of full detector (in mm)
     n : int
-        Number of chunks to divide detector into, rounded up to the nearest
+        Number of chunks to divide detector into (in the x direction and in the y direction; 
+        thus the total number of area chuncks is N^2), rounded up to the nearest
         even number.
     x_c, y_c : float
         x and y Cartesian coordinates of the center of the laser spot
@@ -367,9 +368,7 @@ def signal_over_time(n: int, diameter: float, gap: float, amplitude: float,
     Notes
     -----
     1. the track function specifies the y-coordinate of the spot
-    center as it tracks across the detector.
-    2. The period of the motion is set to mimic our pendulum with
-    its current torsion fiber (40 seconds)
+    center as it tracks across the detector. 
     """
 
     # create time array
