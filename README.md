@@ -3,7 +3,7 @@
 [![Documentation Status](https://readthedocs.org/projects/quadcelldetector/badge/?version=latest)](https://quadcelldetector.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.org/university-of-southern-maine-physics/QuadCellDetector.svg?branch=master)](https://travis-ci.org/university-of-southern-maine-physics/QuadCellDetector)
 
-A Python package designed to simulate the electronic response of a quadrant cell photodiode to the passage of a gaussian profile laser beam across its surface.
+A Python package designed to simulate the electronic response of a circular quadrant cell photodiode to the passage of a gaussian profile laser beam across its surface.
 
 ## Overview
 
