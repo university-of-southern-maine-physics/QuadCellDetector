@@ -78,3 +78,10 @@ install:
 # command to run tests
 script:
 - pytest -v tests/
+
+deploy:
+  skip_existing: true
+  provider: pypi
+  user: "nyctanthous"
+  password:
+    secure: "EyGu32EWhdiQqTBywPH9XU7H33vJ8XgZhbgTBrB6Z80BNWXmH+mJyBZiECP43WZpJibncvfSJD6PGpU+LHYe1dE5xPIPNbA8hgb7uuCwZ3H75bRW59HCH2Np1bheU9UaeItWWvnvKumsH12y8WonbsPX4EaRl8HY4gej0jSzQc0APDtJsWq4HflUPg2gzy9KJxIBphFMCLcXmAiT7WPSTA0DNqr7PHvtIJLW4s8j7zI0rMXTRbVzLMxJdeXAz4eidvmVhwNuza9fznxR1xOpTt7wG08r05LZeIYjCfPE/cB/9jjJel5sIT86RjuiVPKigNM+Iuhs7sUYkSsQZXTWCAZUx6qxB7/wTm9LbF5KpxRMYMsV9fClou9Qo2L6aarN/bycxCBFv6DtuX08sa3bOSjMcaXE4JAebhhvw7ZGX2jQzZ52uXTZP8l65ya/boaaG2LE79nUkFF/Y9oJwPEiRHY2VPvz4EaIBRoS01z/MmJm8WKJB/CYMugm3qjwaJHd8e3R+VYZIGIIfObv2vpKSdCy7Da3oLORXymRvO+WTza2+o4hgg5/8S71C2hpaachCxPNEROLDxoN5HCRd9UTLAP9/N9g3aHZ/DKKyhlMUDhZjsnHQOSGEjOZwdX+r39s5GjV9X4rRF9TRpjY9VCFBx+AvH2COdMv18GCzkEZq9I="
