@@ -22,7 +22,8 @@ def laser(diameter, n, x_c, y_c, sigma):
     diameter : float
         Diameter of full detector (in mm)
     n : int
-        Number of chunks to divide detector into, rounded up to the nearest
+        Number of chunks to divide detector into (in the x direction and in the y direction; 
+        thus the total number of area chuncks is N^2), rounded up to the nearest
         even number.
     x_c, y_c : float
         x and y Cartesian coordinates of the center of the laser spot
