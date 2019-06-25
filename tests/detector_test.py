@@ -129,57 +129,44 @@ def test_signal_over_path():
 def test_signal_over_time():
     # Temp variables while this function gets built
     gap = 0
-    amplitude = detector_diameter/2
+    amplitudes = [detector_diameter/2, 10*detector_diameter]
     period = 8
     max_time = 8
     sigma = 1
     num_samples = 41
 
-    for track_func in [qsf.center_path, qsf.half_path, qsf.quarter_path]:
-        time_vals, x_vals, sum_s, lr_s, tb_s = qd.signal_over_time(
-            detector_n, detector_diameter, gap,
-            amplitude, period, max_time, sigma,
-            track_func, num_samples)
-
-        # Basic dimentionality and type check
-        assert time_vals.shape == x_vals.shape == sum_s.shape == lr_s.shape\
-            == tb_s.shape
-            
-
-        if track_func == qsf.center_path: 
-            # Check case of small vertically centered spot which starts centered
-            # on the detector and moves sinusoidally as Amplitude*sin(2*pi*t/period)
-            # Consequently, all signals should be identical at t = 0 and t = period
-            assert sum_s[0] == approx(sum_s[-1], abs=1e-6) 
-            assert lr_s[0] == approx(lr_s[-1],  abs=1e-6)
-            assert tb_s[0] == approx(tb_s[-1], abs=1e-6) 
-            # now check that the sum signal and top-bottom signals at t=period/4 and 
-            # t = 3*period/4 should be unchanged. Also the left - right signal should 
-            # switch sign
-            assert sum_s[10] == approx(sum_s[30],  abs=1e-6)
-            assert tb_s[10] == approx(tb_s[30],  abs=1e-6)
-            assert lr_s[10] == approx(-lr_s[30],  abs=1e-6)        
-            
-    # Now change the amplitude to have an amplitude 10 times larger than the detector
-    # diameter.
-    amplitude = 10*detector_diameter
-    time_vals, x_vals, sum_s, lr_s, tb_s = qd.signal_over_time(
-        detector_n, detector_diameter, gap,
-        amplitude, period, max_time, sigma,
-        track_func, num_samples)
-    # Check case of small vertically centered spot which starts centered
-    # on the detector and moves sinusoidally as Amplitude*sin(2*pi*t/period)
-    # Consequently, all signals should be identical at t = 0 and t = period
-    assert sum_s[0] == approx(sum_s[-1], abs=1e-6) 
-    assert lr_s[0] == approx(lr_s[-1],  abs=1e-6)
-    assert tb_s[0] == approx(tb_s[-1], abs=1e-6) 
-    # now check that the sum signal and top-bottom signals at t=period/4 and 
-    # t = 3*period/4 should be unchanged. Also the left - right signal should 
-    # switch sign; also, all of these signals should be very small, as these 
-    # points correspond to beams centered far from detector.
-    assert sum_s[10] == approx(sum_s[30],  abs=1e-6) == approx(0, abs=1e-6)
-    assert tb_s[10] == approx(tb_s[30],  abs=1e-6) == approx(0, abs=1e-6)
-    assert lr_s[10] == approx(-lr_s[30],  abs=1e-6)   == approx(0, abs=1e-6)      
-    
-    
+    for amplitude in amplitudes:
         
+        for track_func in [qsf.center_path, qsf.half_path, qsf.quarter_path]:
+            time_vals, x_vals, sum_s, lr_s, tb_s = qd.signal_over_time(
+                detector_n, detector_diameter, gap,
+                amplitude, period, max_time, sigma,
+                track_func, num_samples)
+
+            # Basic dimentionality and type check
+            assert time_vals.shape == x_vals.shape == sum_s.shape == lr_s.shape\
+                == tb_s.shape
+            
+
+            if track_func == qsf.center_path: 
+                # Check case of small vertically centered spot which starts centered
+                # on the detector and moves sinusoidally as Amplitude*sin(2*pi*t/period)
+                # Consequently, all signals should be identical at t = 0 and t = period
+                assert sum_s[0] == approx(sum_s[-1], abs=1e-6) 
+                assert lr_s[0] == approx(lr_s[-1],  abs=1e-6)
+                assert tb_s[0] == approx(tb_s[-1], abs=1e-6) 
+                # now check that the sum signal and top-bottom signals at t=period/4 and 
+                # t = 3*period/4 should be unchanged. Also the left - right signal should 
+                # switch sign
+                assert sum_s[10] == approx(sum_s[30],  abs=1e-6)
+                assert tb_s[10] == approx(tb_s[30],  abs=1e-6)
+                assert lr_s[10] == approx(-lr_s[30],  abs=1e-6)   
+            if amplitude > 3*detector_diameter:
+                # now check that the sum signal and top-bottom signals at t=period/4 and 
+                # t = 3*period/4 should be unchanged. Also the left - right signal should 
+                # switch sign; also, all of these signals should be very small, as these 
+                # points correspond to beams centered far from detector.
+                assert sum_s[10] == approx(sum_s[30],  abs=1e-6) == approx(0, abs=1e-6)
+                assert tb_s[10] == approx(tb_s[30],  abs=1e-6) == approx(0, abs=1e-6)
+                assert lr_s[10] == approx(-lr_s[30],  abs=1e-6)   == approx(0, abs=1e-6)      
+                     
