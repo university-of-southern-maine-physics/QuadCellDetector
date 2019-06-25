@@ -11,7 +11,18 @@ The package simulates circular quadrant cell detectors, where the quadrant cell 
 
 ## Installation
 
-Clone this repository and install with `pip install .`
+You can install this package with pip through our PyPi package with the command
+```
+pip install quadcelldetector
+```
+
+Alternatively, since we use `pbr` in `setup.py`, you can install from this github repository with
+
+```
+https://github.com/university-of-southern-maine-physics/QuadCellDetector.git
+cd QuadCellDetector
+pip install .
+```
 
 ## Examples
 
