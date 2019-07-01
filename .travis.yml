@@ -58,9 +58,11 @@ install:
   if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     pip3 install pytest
     pip3 install .
+    pip3 install twine
   else
     pip install pytest
     pip install .
+    pip install twine
   fi
 script:
 - pytest -v tests/
