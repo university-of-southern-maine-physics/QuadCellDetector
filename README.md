@@ -3,7 +3,7 @@
 [![Documentation Status](https://readthedocs.org/projects/quadcelldetector/badge/?version=latest)](https://quadcelldetector.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.org/university-of-southern-maine-physics/QuadCellDetector.svg?branch=master)](https://travis-ci.org/university-of-southern-maine-physics/QuadCellDetector)
 
-A Python package designed to simulate the electronic response of a quadrant cell photodiode to the passage of a gaussian profile laser beam across its surface.
+A Python package designed to simulate the electronic response of a circular quadrant cell photodiode to the passage of a gaussian profile laser beam across its surface.
 
 ## Overview
 
@@ -11,7 +11,18 @@ The package simulates circular quadrant cell detectors, where the quadrant cell 
 
 ## Installation
 
-Clone this repository and install with `pip install .`
+You can install this package with pip through our PyPi package with the command
+```
+pip install quadcelldetector
+```
+
+Alternatively, since we use `pbr` in `setup.py`, you can install from this github repository with
+
+```
+https://github.com/university-of-southern-maine-physics/QuadCellDetector.git
+cd QuadCellDetector
+pip install .
+```
 
 ## Examples
 

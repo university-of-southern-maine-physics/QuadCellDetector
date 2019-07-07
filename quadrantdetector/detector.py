@@ -6,7 +6,8 @@ and mask it according to the specifications of our quandrant cell photodiode.
 import numpy as np
 import numpy.ma as ma
 from scipy import integrate
-from quadrantdetector.sample_functions import periodogram_psd
+
+from typing import Union, Tuple, Callable
 
 
 def laser(diameter, n, x_c, y_c, sigma):
@@ -21,7 +22,8 @@ def laser(diameter, n, x_c, y_c, sigma):
     diameter : float
         Diameter of full detector (in mm)
     n : int
-        Number of chunks to divide detector into, rounded up to the nearest
+        Number of chunks to divide detector into (in the x direction and in the y direction; 
+        thus the total number of area chuncks is N^2), rounded up to the nearest
         even number.
     x_c, y_c : float
         x and y Cartesian coordinates of the center of the laser spot
@@ -34,28 +36,71 @@ def laser(diameter, n, x_c, y_c, sigma):
     array_like
         NumPy array of normalized beam intensity values over the detector array
     """
-    delta = diameter/n
-    y, x = np.mgrid[-diameter/2 + delta/2: diameter/2 + delta/2: delta, -diameter/2 + delta/2: diameter/2 + delta/2: delta]
+    delta = diameter / n
+    y, x = np.mgrid[-diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta,
+                    -diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta]
     return 1 / (2 * np.pi * sigma ** 2) \
         * (np.exp(-((x - x_c) ** 2 + (y - y_c) ** 2) / (2 * sigma ** 2)))
-        
-
-def intensity(y, x, sigma):
-    """ Computes the intensity of a Gaussian beam centered on the origin at the position (x,y)"""
-    return (1/(2*np.pi*sigma**2)) * np.exp(-(x**2 + y**2)/(2*sigma**2))
 
 
-        
-def total_signal(delta, sigma, R):
-    """ Computes the theoretical sum signal by numerical integration; 
-        Assumes a centered beam.
+def intensity(y: Union[float, np.ndarray],
+              x: Union[float, np.ndarray],
+              sigma: float) -> Union[float, np.ndarray]:
     """
-    signal = 4* integrate.dblquad(intensity, delta/2, np.sqrt(R**2 - 0.25*delta**2), delta/2,
-                               lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
-    return signal
+    Computes the intensity of a Gaussian beam centered on the origin at
+    the position (x,y)
+
+    Parameters
+    ----------
+    y: float or np.ndarray
+        The x-coordinite in Cartesian space to be evaluated
+    x: float or np.ndarray
+        The x-coordinite in Cartesian space to be evaluated
+    sigma: float
+        The sigma value used in the Gaussian.
+
+    Returns
+    -------
+    Union[float, np.ndarray]
+        A float if (x, y) were both floats, or an np.ndarray
+        if (x, y) were both np.ndarray. In all cases, represents the Gaussian
+        evaluated at those point(s).
+
+    Notes
+    -----
+    (x, y) must have the same dimentions, otherwise behavior is undefined and
+    may result in an exception.
+    """
+    return (1 / (2 * np.pi * sigma**2)) * np.exp(-(x**2 + y**2)/(2*sigma**2))
 
 
-def n_critical(diameter, gap):
+def total_signal(detector_gap: float, sigma: float,
+                 detector_radius: float) -> float:
+    """
+    Computes the theoretical sum signal by numerical integration; assumes a
+    centered beam.
+
+    Parameters
+    ----------
+    detector_gap: float
+        Gap width between the quadrants of the detector (in mm)
+    sigma: float
+        Width of gaussian beam
+
+    Returns
+    -------
+    float
+        A value representing the sum signal of the detector.
+    """
+    return 4 * integrate.dblquad(intensity,
+                                 detector_gap / 2,
+                                 np.sqrt(detector_radius**2 - 0.25 * detector_gap**2),
+                                 detector_gap / 2,
+                                 lambda x: np.sqrt(detector_radius**2 - x**2),
+                                 args=(sigma,))[0]
+
+
+def n_critical(detector_diameter: float, detector_gap: float) -> int:
     """
     This function computes the smallest even integer value for the number of
     cells, n_crit, is such that no more than 2 complete cells fall within the
@@ -64,9 +109,9 @@ def n_critical(diameter, gap):
 
     Parameters
     ----------
-    diameter : float
+    detector_diameter : float
         The diameter of the quadrant cell photo diode (in mm)
-    gap : float
+    detector_gap: float
         The gap distance between the quadrants of the photo diode (in mm)
 
     Returns
@@ -75,13 +120,14 @@ def n_critical(diameter, gap):
         The critical number of cells (an even number)
 
     """
-    critical = int(2 * diameter / gap)
+    critical = int(2 * detector_diameter / detector_gap)
     if critical % 2 != 0:
         critical += 1
     return critical
 
 
-def create_detector(n, diameter, gap, roundoff=1e-14):
+def create_detector(n: int, diameter: float, gap: float,
+                    roundoff=1e-14) -> np.ndarray:
     """
     This routine creates the entire detector array. It does so by assuming a
     square array and eliminating chunks not within the circular detector
@@ -102,7 +148,10 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
     Returns
     -------
     active_area : array_like
-        2d array with effective area of each active cell
+        2d array with effective area of each cell; if the cell is dead,
+        it's area will be zero. Most cells will have and area of
+        (diameter/n)**2, but some cells which straddle the gap will have a
+        fraction of this area.
 
     Note
     ----
@@ -133,7 +182,12 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
 
     # If odd, round up.
     if n % 2:
-        n += 1
+        n = n + 1
+
+    # The maximum possible gap size is sqrt(2)*Radius of detector;
+    # raise an exception if this condition is violated:
+    if gap >= np.sqrt(2) * diameter/2:
+        raise Exception('The gap is too large!')
 
     delta = diameter / n
     y, x = np.mgrid[-diameter / 2 + delta / 2: diameter / 2 + delta / 2: delta,
@@ -141,7 +195,7 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
     # This computes the distance of each grid point from the origin
     # and then we extract a masked array of points where r_sqr is less
     # than the distance of each grid point from the origin:
-    r_sqr = x ** 2 + y ** 2 
+    r_sqr = x ** 2 + y ** 2
 
     inside = ma.getmask(ma.masked_where(r_sqr <= (diameter / 2) ** 2, x))
 
@@ -178,7 +232,8 @@ def create_detector(n, diameter, gap, roundoff=1e-14):
     return active_area
 
 
-def compute_signals(beam, area):
+def compute_signals(beam: np.ndarray,
+                    area: np.ndarray) -> Tuple[float, float, float]:
     """
     This routine computes--for a given beam intensity--
     the sum, left-right, and top-bottom signals.
@@ -208,8 +263,11 @@ def compute_signals(beam, area):
     return np.sum(signal), left - right, top - bottom
 
 
-def signal_over_path(n, diameter, gap, x_max, sigma, track,
-                     n_samples, roundoff=1e-14):
+def signal_over_path(n: int, diameter: float, gap: float,
+                     x_max: float, sigma: float,
+                     track: Callable[[float, float], float],
+                     n_samples: int, roundoff=1e-14) \
+                     -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     This routine executes the compute_signals function multiple times over
     a user specified path function and returns the path and the expected
@@ -226,10 +284,10 @@ def signal_over_path(n, diameter, gap, x_max, sigma, track,
     x_max : float
         horizontal domain for sweeping across detector x from -xmax to +xmax
     sigma : float
-        Width of gaussian beam,
-    track
+        Width of gaussian beam
+    track: Callable[Union[float, np.ndarray], float]
         A function describing path across detector. Must take the
-        arguments (x, d0).
+        arguments (x_position, detector_diameter).
     n_samples : int
         Number of samples in domain; dx = 2 * xmax / n_samples
     roundoff : float
@@ -248,20 +306,22 @@ def signal_over_path(n, diameter, gap, x_max, sigma, track,
     """
     xp = np.linspace(-x_max, x_max, n_samples)  # create x coordinate array
     area = create_detector(n, diameter, gap, roundoff)
-    all_results = [compute_signals(laser(area, diameter / n, x_val,
+    all_results = [compute_signals(laser(diameter, n, x_val,
                                    track(x_val, diameter), sigma), area)
-                   for x_val in np.nditer(xp)]
+                   for x_val in xp]
     return (xp, *zip(*all_results))
 
 
-def signal_over_time(n, diameter, gap, t_max, sigma, track,
-                     n_samples, amplitude, roundoff=1e-14):
+def signal_over_time(n: int, diameter: float, gap: float, amplitude: float,
+                     period: float, t_max: float, sigma: float,
+                     track: Callable[[float, float], float],
+                     n_samples: int, roundoff=1e-14):
     """
     This routine executes the compute_signals function multiple times over
     a user specified TIME interval and returns the path and the expected
     signals.
     This routine is more relevant to someone using a quadrant cell
-    detector as a way top measure zero crossings of torsional pendulum
+    detector as a way to measure zero crossings of torsional pendulum
     undergoing angular oscillations with amplitude significantly greater that
     the effective angular amplitude defined by the detector. That being said,
     this function allows the users to specify the amplitude to any value
@@ -276,13 +336,17 @@ def signal_over_time(n, diameter, gap, t_max, sigma, track,
         Diameter of detector in mm
     gap : float
         Gap width between quadrants of detector in mm
+    amplitude : float
+        Amplitude of sinusoidal motion
+    period : float
+        Period of sinusoidal signal in seconds
     t_max : float
         Maximum time for simulation in seconds
     sigma : float
         width of gaussian beam in mm
-    track
-        name of function describing path across detector. Must take the
-        arguments (x, d0).
+    track: Callable[Union[float, np.ndarray], float]
+        A function describing path across detector. Must take the
+        arguments (x_position, detector_diameter).
     n_samples : int
         number of samples in time domain; dt = 2*t_max/n_samples
     roundoff : float
@@ -304,13 +368,8 @@ def signal_over_time(n, diameter, gap, t_max, sigma, track,
     Notes
     -----
     1. the track function specifies the y-coordinate of the spot
-    center as it tracks across the detector.
-    2. The period of the motion is set to mimic our pendulum with
-    its current torsion fiber (40 seconds)
+    center as it tracks across the detector. 
     """
-
-    # approx. period of our calibration ring pendulum
-    period = 40.00
 
     # create time array
     tp = np.linspace(0, t_max, n_samples)
@@ -322,41 +381,7 @@ def signal_over_time(n, diameter, gap, t_max, sigma, track,
     area = create_detector(n, diameter, gap,
                            roundoff=roundoff)
 
-    all_sig = [compute_signals(laser(area, x_val, y_val, sigma), area)
+    all_sig = [compute_signals(laser(diameter, n, x_val, y_val, sigma), area)
                for x_val, y_val in np.nditer([xp, yp])]
 
-    return (tp, xp, *zip(*all_sig))
-
-
-def power_spectrum(n, d0, gap, tmax, σ, track_func, n_samples, amplitude):
-    """
-    This code uses the functions in physics.py to build a detector and
-    simulate the motion of our laser on some path across the detector.
-
-    """
-    #   Physical Paramaters for our detector system:
-    #
-    #    d0  # diameter of photocell in mm
-    #    gap   # gap between the 4 quadrants; also in mm
-    #    σ   # measured gaussian radius of our laser beam
-    #
-    #   Simulation Parameters:
-    #
-    #    n           # choose a reasonable minimum n value
-    #    ϵ           # fudge factor due to roundoff error in case where δ = 2Δ
-    delta = d0 / n  # grid size for simulation
-    #    t_max       # maximum time to run for
-    #    n_samples   # number of samples for path in time
-    #    track_func  # path of laser across detector
-    #    amplitude   # amplitude of oscillation in mm
-    print("Building: ", n, "by", n, " Array")
-    print("Pixel Size: Δ = %.3f " % delta)
-
-    #   Now build the detector and return the detector response for a gaussian
-    #   beam centered at (xc, yc) illuminating the detector.
-
-    tp, xp, s, lr, tb = signal_over_time(n, d0, gap, t_max, sigma,
-                                         track_func, n_samples, amplitude)
-    f_lr, psd_lr = periodogram_psd(lr, n_samples / t_max)
-    f_tb, psd_tb = periodogram_psd(tb, n_samples / t_max)
-    return tp, xp, s, lr, tb, f_lr, psd_lr, f_tb, psd_tb
+    return (tp, xp, *np.transpose(all_sig))

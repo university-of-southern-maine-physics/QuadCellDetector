@@ -3,9 +3,12 @@ import numpy as np
 import quadrantdetector.detector as qd
 import quadrantdetector.sample_functions as qsf
 from scipy import integrate
+import math as m
+from pytest import approx
 
-axis_size = 2000  # cells
-detector_size = 10  #  diameter in mm
+detector_n = 2000  # cells in simulation
+detector_diameter = 10  # diameter in mm
+max_gap = np.sqrt(2) * detector_diameter/2  # this is the largest possible gap size
 
 
 def intensity(y, x, sigma):
@@ -14,11 +17,13 @@ def intensity(y, x, sigma):
 
 
 def total_signal(delta, sigma, R):
-    """ Computes the theoretical intensity by integration; 
+    """ Computes the theoretical intensity by integration;
         Assumes a centered beam.
     """
-    signal = 4* integrate.dblquad(intensity, delta/2, np.sqrt(R**2 - 0.25*delta**2), delta/2,
-                               lambda x: np.sqrt(R**2 - x**2), args=(sigma,))[0]
+    signal = 4 * integrate.dblquad(intensity,
+                                   delta/2, np.sqrt(R**2 - 0.25*delta**2),
+                                   delta/2, lambda x: np.sqrt(R**2 - x**2),
+                                   args=(sigma,))[0]
     
     return signal
 
@@ -26,26 +31,24 @@ def total_signal(delta, sigma, R):
 @pytest.fixture(scope='session')
 def get_detectors():
     """
-    Returns a list of 100 detectors with increasingly large gaps, the last
-    being gaps larger than the actual detector.
+    Returns a list of 20 detectors with increasingly large gaps, the last
+    being a gap of size max_gap = np.sqrt(2)*detector_diameter/2.
     """
-    return [(gap, qd.create_detector(axis_size, detector_size, gap))
-            for gap in np.linspace(0, 8, 9)] \
-     #   + [(gap, qd.create_detector(axis_size, detector_size, gap))
-     #      for gap in np.linspace(1, 11, 50)]
+    return [(gap, qd.create_detector(detector_n, detector_diameter, gap))
+            for gap in np.linspace(0, 0.99 * max_gap, 20)]
 
 
 def test_detector_init(get_detectors):
     for gap, detect in get_detectors:
-        assert detect.shape == (axis_size, axis_size)
+        assert detect.shape == (detector_n, detector_n)
 
-        density = axis_size / detector_size
+        density = detector_n / detector_diameter
 
-        midpoint = int(axis_size / 2)
+        midpoint = int(detector_n / 2)
         # Positive value describing the number of zero-only cells in the width
         # of the detector gap.
-        gap_width = min(int(gap * density / 2), int(axis_size / 2))
-    
+        gap_width = min(int(gap * density / 2), int(detector_n / 2))
+
         # Sum the 2d areas that should all be zero. Remember, end bounds for
         # slicing are not inclusive.
         vertical_block = detect[midpoint - gap_width: midpoint + gap_width, :]
@@ -60,24 +63,23 @@ def test_detector_init(get_detectors):
 
 
 def test_laser(get_detectors):
-    # Test a laser on an empty grid.
-    # In every laser on a detector, the sum of every point should be
-    # approximately 1 when sigma << detector diameter.
-    # Clearly, this only holds when the gap is small, otherwise the sum will
-    # be even smaller.
+    # this test creates a gaussian beam centered on the detector
+    # and looks at the sum signal as produced by our computational model
+    # of the detector and compares it to the theoretical model for the same beam.
+    # The theoretical integral is relatively easy to compute in this case, but is 
+    # not so easily computed when the beam is not centered.
+    #
+    # start by creating a ranged of beam radii, and then compute the sum signal
+    # by our computational model:
     sigma_min = 0.01
     sigma_max = 20
     sigma_step = 0.5
-    print(sigma_min, sigma_max, sigma_step)
-    for sigma in np.arange(sigma_min,sigma_max, sigma_step):
-        print("sigma = ", sigma, "\n")
+    for sigma in np.arange(sigma_min, sigma_max, sigma_step):
         for gap, detect in get_detectors:
-            laser = qd.laser(detector_size, axis_size, 0, 0, sigma)
+            laser = qd.laser(detector_diameter, detector_n, 0, 0, sigma)
             sum_s = np.sum(laser * detect)
-
-            # Note that when sum_s is increasingly large, we approach the expected value.
-            # When it decreases, we fall away from our expected value.
-            print(sum_s,',', sum_s - total_signal(gap, sigma, detector_size / 2))
+            # now test so see that this is approximately equal to the theoretical value
+            assert m.fabs(sum_s - total_signal(gap, sigma, detector_diameter / 2)) < 0.00001
 
 
 def test_compute_signals(get_detectors):
@@ -85,7 +87,8 @@ def test_compute_signals(get_detectors):
         # get_detectors created a sequence of detectors centered, so all
         # signals should be symmetric.
         sum_signal, lr_signal, tb_signal = qd.compute_signals(
-            qd.laser(detect, detector_size / axis_size, 0, 0, 2.0), detect)
+            qd.laser(detector_diameter, detector_n, 0, 0, 2.0),
+            detect)
         assert sum_signal >= lr_signal and sum_signal >= tb_signal
 
 
@@ -95,7 +98,7 @@ def test_signal_over_path():
         # Run a track with a detector of diameter 10mm, from -20mm to +20mm
         # WLOG, sigma = 1, and we take 20 points along the track.
         x_positions, sum_signals, lr_signals, tb_signals = \
-            qd.signal_over_path(axis_size, detector_size, 0, 20, 1, track_func, 40)
+            qd.signal_over_path(detector_n, detector_diameter, 0, 20, 1, track_func, 40)
 
         for curr_x, curr_sum, curr_lr, curr_tb in zip(x_positions, sum_signals,
                                                       lr_signals, tb_signals):
@@ -104,7 +107,7 @@ def test_signal_over_path():
                and (curr_sum >= curr_tb or abs(curr_sum - curr_tb) < 1e-6)
 
             # Check sums based on position.
-            if curr_x >= -detector_size and curr_x <= detector_size:
+            if curr_x >= -detector_diameter and curr_x <= detector_diameter:
                 assert curr_sum > 0
             else:
                 assert curr_sum < 0.1
@@ -122,3 +125,48 @@ def test_signal_over_path():
                     # Should be somewhat biased towards the top
                     assert 1 > curr_tb > 0.5
 
+
+def test_signal_over_time():
+    # Temp variables while this function gets built
+    gap = 0
+    amplitudes = [detector_diameter/2, 10*detector_diameter]
+    period = 8
+    max_time = 8
+    sigma = 1
+    num_samples = 41
+
+    for amplitude in amplitudes:
+        
+        for track_func in [qsf.center_path, qsf.half_path, qsf.quarter_path]:
+            time_vals, x_vals, sum_s, lr_s, tb_s = qd.signal_over_time(
+                detector_n, detector_diameter, gap,
+                amplitude, period, max_time, sigma,
+                track_func, num_samples)
+
+            # Basic dimentionality and type check
+            assert time_vals.shape == x_vals.shape == sum_s.shape == lr_s.shape\
+                == tb_s.shape
+            
+
+            if track_func == qsf.center_path: 
+                # Check case of small vertically centered spot which starts centered
+                # on the detector and moves sinusoidally as Amplitude*sin(2*pi*t/period)
+                # Consequently, all signals should be identical at t = 0 and t = period
+                assert sum_s[0] == approx(sum_s[-1], abs=1e-6) 
+                assert lr_s[0] == approx(lr_s[-1],  abs=1e-6)
+                assert tb_s[0] == approx(tb_s[-1], abs=1e-6) 
+                # now check that the sum signal and top-bottom signals at t=period/4 and 
+                # t = 3*period/4 should be unchanged. Also the left - right signal should 
+                # switch sign
+                assert sum_s[10] == approx(sum_s[30],  abs=1e-6)
+                assert tb_s[10] == approx(tb_s[30],  abs=1e-6)
+                assert lr_s[10] == approx(-lr_s[30],  abs=1e-6)   
+            if amplitude > 3*detector_diameter:
+                # now check that the sum signal and top-bottom signals at t=period/4 and 
+                # t = 3*period/4 should be unchanged. Also the left - right signal should 
+                # switch sign; also, all of these signals should be very small, as these 
+                # points correspond to beams centered far from detector.
+                assert sum_s[10] == approx(sum_s[30],  abs=1e-6) == approx(0, abs=1e-6)
+                assert tb_s[10] == approx(tb_s[30],  abs=1e-6) == approx(0, abs=1e-6)
+                assert lr_s[10] == approx(-lr_s[30],  abs=1e-6)   == approx(0, abs=1e-6)      
+                     
